@@ -1,5 +1,5 @@
-"""The single-chain AFM tensile test curve fit validation 
-characterization module for composite uFJCs that undergo scission
+"""The single-chain rate-independent fracture toughness characterization
+module for composite uFJCs that undergo scission
 """
 
 # import external modules
@@ -16,17 +16,18 @@ from scipy import constants
 import matplotlib.pyplot as plt
 
 
-class AFMChainTensileTestCurveFitCharacterizer(
+class RateIndependentFractureToughnessCharacterizer(
         CompositeuFJCScissionCharacterizer):
-    """The characterization class assessing the single-chain AFM tensile
-    test curve fit validation for composite uFJCs that undergo scission.
-    It inherits all attributes and methods from the
+    """The characterization class assessing rate-independent fracture
+    toughness for composite uFJCs that undergo scission. It inherits all
+    attributes and methods from the
     ``CompositeuFJCScissionCharacterizer`` class.
     """
     def __init__(self, paper_authors, chain, T):
-        """Initializes the ``AFMChainTensileTestCurveFitCharacterizer``
-        class by initializing and inheriting all attributes and methods
-        from the ``CompositeuFJCScissionCharacterizer`` class.
+        """Initializes the
+        ``RateIndependentFractureToughnessCharacterizer`` class by
+        initializing and inheriting all attributes and methods from the
+        ``CompositeuFJCScissionCharacterizer`` class.
         """
         self.paper_authors = paper_authors
         self.chain = chain
@@ -57,22 +58,6 @@ class AFMChainTensileTestCurveFitCharacterizer(
         p.characterizer.polymer_type_label2chain_backbone_bond_type_dict = {
             "pdms": "si-o",
             "pva": "c-c"
-        }
-        p.characterizer.paper_authors_chain2xlim_chain_mechanical_response_plot = {
-            "al-maawali-et-al": {
-                "chain-a": [0, 70]
-            },
-            "hugel-et-al": {
-                "chain-a": [0, 1200],
-            }
-        }
-        p.characterizer.paper_authors_chain2ylim_chain_mechanical_response_plot = {
-            "al-maawali-et-al": {
-                "chain-a": [-0.1, 2]
-            },
-            "hugel-et-al": {
-                "chain-a": [-0.1, 1.5],
-            }
         }
         # from DFT simulations on H_3C-CH_2-CH_3 (c-c) 
         # and H_3Si-O-CH_3 (si-o) by Beyer, J Chem. Phys., 2000
@@ -132,8 +117,8 @@ class AFMChainTensileTestCurveFitCharacterizer(
         p.characterizer.f_c_dot_label_list    = f_c_dot_label_list
         p.characterizer.f_c_dot_color_list    = f_c_dot_color_list
 
-        # nu = 1 -> nu = 3125
-        nu_list = [i for i in range(1, 5**5+1)]
+        # nu = 1 -> nu = 5000
+        nu_list = [i for i in range(1, 5001)]
 
         p.characterizer.nu_list = nu_list
 
@@ -174,29 +159,36 @@ class AFMChainTensileTestCurveFitCharacterizer(
         f_c_max = (
             cp.chain_backbone_bond_type2f_c_max_dict[chain_backbone_bond_type]
         ) # nN
+        f_c_max_label = r'$\textrm{Wang et al. (2019)+Beyer (2000)},~f_c^{max}='+'{0:.2f}'.format(f_c_max)+'~nN$'
         typcl_AFM_exprmt_f_c_max = (
             cp.chain_backbone_bond_type2typcl_AFM_exprmt_f_c_max_dict[chain_backbone_bond_type]
         ) # nN
+        typcl_AFM_exprmt_f_c_max_label = (
+            r'$\textrm{Wang et al. (2019)+Beyer (2000)},~f_c^{max,typical}='+'{0:.2f}'.format(typcl_AFM_exprmt_f_c_max)+'~nN$'
+        )
         xi_c_max = f_c_max * beta * l_nu_eq
         typcl_AFM_exprmt_xi_c_max = typcl_AFM_exprmt_f_c_max * beta * l_nu_eq
+
+        if chain_backbone_bond_type == "c-c":
+            intrmdt_AFM_exprmt_f_c_max = 4.5 # nN
+            intrmdt_AFM_exprmt_f_c_max_label = (
+                r'$\textrm{Wang et al. (2019)},~f_c^{max,typical}='+'{0:.2f}'.format(intrmdt_AFM_exprmt_f_c_max)+'~nN$'
+            )
+            intrmdt_AFM_exprmt_xi_c_max = (
+                intrmdt_AFM_exprmt_f_c_max * beta * l_nu_eq
+            )
         
         
         single_chain_list = [
             RateIndependentScissionCompositeuFJC(
-                nu=cp.nu_list[nu_indx], zeta_nu_char=zeta_nu_char,
-                kappa_nu=kappa_nu)
-            for nu_indx in range(len(cp.nu_list))
+                nu=nu_val, zeta_nu_char=zeta_nu_char, kappa_nu=kappa_nu)
+            for nu_val in cp.nu_list
         ]
         
         
-        A_nu_list = [
-            single_chain.A_nu
-            for single_chain in single_chain_list
-        ]
+        A_nu_list = [single_chain.A_nu for single_chain in single_chain_list]
         
-        inext_gaussian_A_nu_list = [
-            1/np.sqrt(nu_val) for nu_val in cp.nu_list
-        ]
+        inext_gaussian_A_nu_list = [1/np.sqrt(nu_val) for nu_val in cp.nu_list]
         
         inext_gaussian_A_nu_err_list = [
             np.abs((inext_gaussian_A_nu_val-A_nu_val)/A_nu_val)*100
@@ -210,23 +202,18 @@ class AFMChainTensileTestCurveFitCharacterizer(
             for single_chain in single_chain_list
         ]
         g_c_crit_list = [
-            single_chain.g_c_crit
-            for single_chain in single_chain_list
+            single_chain.g_c_crit for single_chain in single_chain_list
         ]
         overline_epsilon_cnu_diss_hat_crit_list = [
-            epsilon_cnu_diss_hat_crit_chain_network_val/zeta_nu_char
-            for epsilon_cnu_diss_hat_crit_chain_network_val
-            in epsilon_cnu_diss_hat_crit_list
+            epsilon_cnu_diss_hat_crit_val/zeta_nu_char
+            for epsilon_cnu_diss_hat_crit_val in epsilon_cnu_diss_hat_crit_list
         ]
         overline_g_c_crit_list = [
-            g_c_crit_chain_network_val/zeta_nu_char
-            for g_c_crit_chain_network_val in g_c_crit_list
+            g_c_crit_val/zeta_nu_char for g_c_crit_val in g_c_crit_list
         ]
         
         
-        LT_epsilon_cnu_diss_hat_crit_list = (
-            [zeta_nu_char] * len(cp.nu_list)
-        )
+        LT_epsilon_cnu_diss_hat_crit_list = [zeta_nu_char] * len(cp.nu_list)
         LT_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, epsilon_cnu_diss_hat_crit_val
@@ -234,14 +221,11 @@ class AFMChainTensileTestCurveFitCharacterizer(
                 A_nu_list, cp.nu_list,
                 LT_epsilon_cnu_diss_hat_crit_list)
         ]
-        LT_overline_epsilon_cnu_diss_hat_crit_list = (
-            [1] * len(cp.nu_list)
-        )
+        LT_overline_epsilon_cnu_diss_hat_crit_list = [1] * len(cp.nu_list)
         LT_overline_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * overline_epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, overline_epsilon_cnu_diss_hat_crit_val
-            in zip(
-                A_nu_list, cp.nu_list,
+            in zip(A_nu_list, cp.nu_list,
                 LT_overline_epsilon_cnu_diss_hat_crit_list)
         ]
         
@@ -249,17 +233,13 @@ class AFMChainTensileTestCurveFitCharacterizer(
         LT_inext_gaussian_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, epsilon_cnu_diss_hat_crit_val
-            in zip(
-                inext_gaussian_A_nu_list,
-                cp.nu_list,
+            in zip(inext_gaussian_A_nu_list, cp.nu_list,
                 LT_epsilon_cnu_diss_hat_crit_list)
         ]
-        LT_overline_inext_gaussian_g_c_crit_list = [
+        LT_inext_gaussian_overline_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * overline_epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, overline_epsilon_cnu_diss_hat_crit_val
-            in zip(
-                inext_gaussian_A_nu_list,
-                cp.nu_list,
+            in zip(inext_gaussian_A_nu_list, cp.nu_list,
                 LT_overline_epsilon_cnu_diss_hat_crit_list)
         ]
         
@@ -268,82 +248,109 @@ class AFMChainTensileTestCurveFitCharacterizer(
             nu=nu, zeta_nu_char=zeta_nu_char, kappa_nu=kappa_nu)
         
         
-        RC_xi_c_max_epsilon_cnu_diss_hat_crit_val = (
+        CR_xi_c_max_epsilon_cnu_diss_hat_crit_val = (
             single_chain.epsilon_cnu_sci_hat_func(
                 single_chain.lmbda_nu_xi_c_hat_func(xi_c_max))
         )
-        RC_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
-            [RC_xi_c_max_epsilon_cnu_diss_hat_crit_val]
-            * len(cp.nu_list)
+        CR_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
+            [CR_xi_c_max_epsilon_cnu_diss_hat_crit_val] * len(cp.nu_list)
         )
-        RC_xi_c_max_g_c_crit_list = [
+        CR_xi_c_max_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, epsilon_cnu_diss_hat_crit_val
-            in zip(
-                A_nu_list, cp.nu_list,
-                RC_xi_c_max_epsilon_cnu_diss_hat_crit_list)
+            in zip(A_nu_list, cp.nu_list,
+                CR_xi_c_max_epsilon_cnu_diss_hat_crit_list)
         ]
-        RC_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = [
-            RC_xi_c_max_epsilon_cnu_diss_hat_crit_val/zeta_nu_char
-            for RC_xi_c_max_epsilon_cnu_diss_hat_crit_val
-            in RC_xi_c_max_epsilon_cnu_diss_hat_crit_list
+        CR_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = [
+            CR_xi_c_max_epsilon_cnu_diss_hat_crit_val/zeta_nu_char
+            for CR_xi_c_max_epsilon_cnu_diss_hat_crit_val
+            in CR_xi_c_max_epsilon_cnu_diss_hat_crit_list
         ]
-        RC_xi_c_max_overline_g_c_crit_list = [
+        CR_xi_c_max_overline_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * overline_epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, overline_epsilon_cnu_diss_hat_crit_val
-            in zip(
-                A_nu_list, cp.nu_list,
-                RC_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list)
+            in zip(A_nu_list, cp.nu_list,
+                CR_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list)
         ]
         
         
-        RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val = (
+        CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val = (
             single_chain.epsilon_cnu_sci_hat_func(
                 single_chain.lmbda_nu_xi_c_hat_func(typcl_AFM_exprmt_xi_c_max))
         )
-        RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
-            [RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val]
+        CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
+            [CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val]
             * len(cp.nu_list)
         )
-        RC_typcl_AFM_exprmt_xi_c_max_g_c_crit_list = [
+        CR_typcl_AFM_exprmt_xi_c_max_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, epsilon_cnu_diss_hat_crit_val
-            in zip(
-                A_nu_list, cp.nu_list,
-                RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list)
+            in zip(A_nu_list, cp.nu_list,
+                CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list)
         ]
-        RC_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = [
-            RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val/zeta_nu_char
-            for RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val
-            in RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list
+        CR_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = [
+            CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val/zeta_nu_char
+            for CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val
+            in CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list
         ]
-        RC_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list = [
+        CR_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list = [
             0.5 * A_nu_val * nu_val**2 * overline_epsilon_cnu_diss_hat_crit_val
             for A_nu_val, nu_val, overline_epsilon_cnu_diss_hat_crit_val
-            in zip(
-                A_nu_list, cp.nu_list,
-                RC_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list)
+            in zip(A_nu_list, cp.nu_list,
+                CR_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list)
         ]
+
+        if chain_backbone_bond_type == "c-c":
+            CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val = (
+            single_chain.epsilon_cnu_sci_hat_func(
+                single_chain.lmbda_nu_xi_c_hat_func(intrmdt_AFM_exprmt_xi_c_max))
+            )
+            CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
+                [CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val]
+                * len(cp.nu_list)
+            )
+            CR_intrmdt_AFM_exprmt_xi_c_max_g_c_crit_list = [
+                0.5 * A_nu_val * nu_val**2 * epsilon_cnu_diss_hat_crit_val
+                for A_nu_val, nu_val, epsilon_cnu_diss_hat_crit_val
+                in zip(A_nu_list, cp.nu_list,
+                    CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list)
+            ]
+            CR_intrmdt_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = [
+                CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val/zeta_nu_char
+                for CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_val
+                in CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list
+            ]
+            CR_intrmdt_AFM_exprmt_xi_c_max_overline_g_c_crit_list = [
+                0.5 * A_nu_val * nu_val**2 * overline_epsilon_cnu_diss_hat_crit_val
+                for A_nu_val, nu_val, overline_epsilon_cnu_diss_hat_crit_val
+                in zip(A_nu_list, cp.nu_list,
+                    CR_intrmdt_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list)
+            ]
+    
+        self.zeta_nu_char = zeta_nu_char
         
+        self.f_c_max_label = f_c_max_label
+        self.typcl_AFM_exprmt_f_c_max_label = typcl_AFM_exprmt_f_c_max_label
+        if chain_backbone_bond_type == "c-c":
+            self.intrmdt_AFM_exprmt_f_c_max_label = (
+                intrmdt_AFM_exprmt_f_c_max_label
+            )
+        self.LT_label = r'$\textrm{Lake and Thomas (1967)}$'
+        self.LT_inext_gaussian_label = (
+            r'$\textrm{Lake and Thomas (1967) inextensible Gaussian chains}$'
+        )
+        self.ufjc_label = r'$\textrm{composite}~u\textrm{FJC scission}$'
         
         self.A_nu_list = A_nu_list
-        self.inext_gaussian_A_nu_list = (
-            inext_gaussian_A_nu_list
-        )
-        self.inext_gaussian_A_nu_err_list = (
-            inext_gaussian_A_nu_err_list
-        )
+        self.inext_gaussian_A_nu_list = inext_gaussian_A_nu_list
+        self.inext_gaussian_A_nu_err_list = inext_gaussian_A_nu_err_list
         
-        self.epsilon_cnu_diss_hat_crit_list = (
-            epsilon_cnu_diss_hat_crit_list
-        )
+        self.epsilon_cnu_diss_hat_crit_list = epsilon_cnu_diss_hat_crit_list
         self.g_c_crit_list = g_c_crit_list
         self.overline_epsilon_cnu_diss_hat_crit_list = (
             overline_epsilon_cnu_diss_hat_crit_list
         )
-        self.overline_g_c_crit_list = (
-            overline_g_c_crit_list
-        )
+        self.overline_g_c_crit_list = overline_g_c_crit_list
         
         self.LT_epsilon_cnu_diss_hat_crit_list = (
             LT_epsilon_cnu_diss_hat_crit_list
@@ -352,42 +359,52 @@ class AFMChainTensileTestCurveFitCharacterizer(
         self.LT_overline_epsilon_cnu_diss_hat_crit_list = (
             LT_overline_epsilon_cnu_diss_hat_crit_list
         )
-        self.LT_overline_g_c_crit_list = (
-            LT_overline_g_c_crit_list
+        self.LT_overline_g_c_crit_list = LT_overline_g_c_crit_list
+        
+        self.LT_inext_gaussian_g_c_crit_list = LT_inext_gaussian_g_c_crit_list
+        self.LT_inext_gaussian_overline_g_c_crit_list = (
+            LT_inext_gaussian_overline_g_c_crit_list
         )
         
-        self.LT_inext_gaussian_g_c_crit_list = (
-            LT_inext_gaussian_g_c_crit_list
+        self.CR_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
+            CR_xi_c_max_epsilon_cnu_diss_hat_crit_list
         )
-        self.LT_overline_inext_gaussian_g_c_crit_list = (
-            LT_overline_inext_gaussian_g_c_crit_list
+        self.CR_xi_c_max_g_c_crit_list = CR_xi_c_max_g_c_crit_list
+        self.CR_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = (
+            CR_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list
         )
-        
-        self.RC_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
-            RC_xi_c_max_epsilon_cnu_diss_hat_crit_list
-        )
-        self.RC_xi_c_max_g_c_crit_list = (
-            RC_xi_c_max_g_c_crit_list
-        )
-        self.RC_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = (
-            RC_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list
-        )
-        self.RC_xi_c_max_overline_g_c_crit_list = (
-            RC_xi_c_max_overline_g_c_crit_list
+        self.CR_xi_c_max_overline_g_c_crit_list = (
+            CR_xi_c_max_overline_g_c_crit_list
         )
         
-        self.RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
-            RC_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list
+        self.CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
+            CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list
         )
-        self.RC_typcl_AFM_exprmt_xi_c_max_g_c_crit_list = (
-            RC_typcl_AFM_exprmt_xi_c_max_g_c_crit_list
+        self.CR_typcl_AFM_exprmt_xi_c_max_g_c_crit_list = (
+            CR_typcl_AFM_exprmt_xi_c_max_g_c_crit_list
         )
-        self.RC_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = (
-            RC_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list
+        self.CR_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = (
+            CR_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list
         )
-        self.RC_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list = (
-            RC_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list
+        self.CR_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list = (
+            CR_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list
         )
+
+        if chain_backbone_bond_type == "c-c":
+            self.CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list = (
+                CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list
+            )
+            self.CR_intrmdt_AFM_exprmt_xi_c_max_g_c_crit_list = (
+                CR_intrmdt_AFM_exprmt_xi_c_max_g_c_crit_list
+            )
+            self.CR_intrmdt_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list = (
+                CR_intrmdt_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list
+            )
+            self.CR_intrmdt_AFM_exprmt_xi_c_max_overline_g_c_crit_list = (
+                CR_intrmdt_AFM_exprmt_xi_c_max_overline_g_c_crit_list
+            )
+
+        self.chain_backbone_bond_type = chain_backbone_bond_type
 
     def finalization(self):
         """Define finalization analysis"""
@@ -424,301 +441,152 @@ class AFMChainTensileTestCurveFitCharacterizer(
         plt.xlabel(r'$\nu$', fontsize=20)
         save_current_figure_no_labels(
             self.savedir,
-            "A_nu-gen-ufjc-model-framework-and-inextensible-Gaussian-chain-comparison")
-
-
-        # # plot curve fit results
-        # fig = plt.figure()
-        # plt.scatter(
-        #     self.r_nu, self.f_c, color='blue', marker='o', alpha=1,
-        #     linewidth=2.5,
-        #     label=cp.paper_authors2polymer_type_label_dict[self.paper_authors])
-        # plt.plot(
-        #     self.r_nu_fit, self.f_c_fit, linestyle='--', color='red', alpha=1,
-        #     linewidth=2.5, label=r'$u\textrm{FJC model fit}$')
-        # plt.legend(loc='best', fontsize=18)
-        # plt.grid(True, alpha=0.25)
-        # plt.xlim(
-        #     cp.paper_authors_chain2xlim_chain_mechanical_response_plot[self.paper_authors][self.chain])
-        # plt.xticks(fontsize=20)
-        # plt.ylim(
-        #     cp.paper_authors_chain2ylim_chain_mechanical_response_plot[self.paper_authors][self.chain])
-        # plt.yticks(fontsize=20)
-        # save_current_figure(
-        #     self.savedir, r'$r_{\nu}~(nm)$', 30, r'$f_c~(nN)$', 30,
-        #     self.data_file_prefix+"-f_c-vs-r_nu-composite-uFJC-curve-fit")
-
-        # fig = plt.figure()
-        # plt.scatter(
-        #     self.r_nu, self.f_c, color='blue', marker='o', alpha=1,
-        #     linewidth=2.5,
-        #     label=cp.paper_authors2polymer_type_label_dict[self.paper_authors])
-        # plt.plot(
-        #     self.r_nu_fit_intgr_nu, self.f_c_fit_intgr_nu, linestyle='--',
-        #     color='red', alpha=1, linewidth=2.5,
-        #     label=r'$u\textrm{FJC model fit}$')
-        # plt.legend(loc='best', fontsize=18)
-        # plt.grid(True, alpha=0.25)
-        # plt.xlim(
-        #     cp.paper_authors_chain2xlim_chain_mechanical_response_plot[self.paper_authors][self.chain])
-        # plt.xticks(fontsize=20)
-        # plt.ylim(
-        #     cp.paper_authors_chain2ylim_chain_mechanical_response_plot[self.paper_authors][self.chain])
-        # plt.yticks(fontsize=20)
-        # save_current_figure(
-        #     self.savedir, r'$r_{\nu}~(nm)$', 30, r'$f_c~(nN)$', 30,
-        #     self.data_file_prefix+"-intgr_nu-f_c-vs-r_nu-composite-uFJC-curve-fit")
+            self.data_file_prefix+"-A_nu-gen-ufjc-model-framework-and-inextensible-Gaussian-chain-comparison")
         
-        # fig = plt.figure()
-        # plt.scatter(
-        #     self.lmbda_c_eq, self.xi_c, color='blue', marker='o', alpha=1,
-        #     linewidth=2.5,
-        #     label=cp.paper_authors2polymer_type_label_dict[self.paper_authors])
-        # plt.plot(
-        #     self.lmbda_c_eq_fit, self.xi_c_fit, linestyle='--', color='red',
-        #     alpha=1, linewidth=2.5, label=r'$u\textrm{FJC model fit}$')
-        # plt.legend(loc='best', fontsize=18)
-        # plt.grid(True, alpha=0.25)
-        # plt.xlim([0, 1.15])
-        # plt.xticks(fontsize=20)
-        # plt.yticks(fontsize=20)
-        # save_current_figure(
-        #     self.savedir, r'$\lambda_c^{eq}$', 30, r'$\xi_{c}$', 30,
-        #     self.data_file_prefix+"-xi_c-vs-lmbda_c_eq-composite-uFJC-curve-fit")
+
+        fig = plt.figure()
+        plt.semilogx(
+            cp.nu_list, self.LT_epsilon_cnu_diss_hat_crit_list,
+            linestyle='-', color='red', alpha=1, linewidth=2.5,
+            label=self.LT_label)
+        plt.semilogx(
+            cp.nu_list, self.CR_xi_c_max_epsilon_cnu_diss_hat_crit_list,
+            linestyle='--', color='black', alpha=1, linewidth=2.5,
+            label=self.f_c_max_label)
+        plt.semilogx(
+            cp.nu_list,
+            self.CR_typcl_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list,
+            linestyle=':', color='black', alpha=1, linewidth=2.5,
+            label=self.typcl_AFM_exprmt_f_c_max_label)
+        if self.chain_backbone_bond_type == "c-c":
+            plt.semilogx(
+                cp.nu_list,
+                self.CR_intrmdt_AFM_exprmt_xi_c_max_epsilon_cnu_diss_hat_crit_list,
+                linestyle='-.', color='black', alpha=1, linewidth=2.5,
+                label=self.intrmdt_AFM_exprmt_f_c_max_label)
+        plt.semilogx(
+            cp.nu_list, self.epsilon_cnu_diss_hat_crit_list,
+            linestyle='-', color='blue', alpha=1, linewidth=2.5,
+            label=self.ufjc_label)
+        plt.legend(loc='best', fontsize=10)
+        plt.ylim([-5, self.zeta_nu_char+5])
+        plt.yticks(fontsize=16)
+        plt.xticks(fontsize=16)
+        plt.grid(True, alpha=0.25)
+        save_current_figure(
+            self.savedir, r'$\nu$', 20,
+            r'$\hat{\varepsilon}_{c\nu}^{diss}$', 20,
+            self.data_file_prefix+"-rate-independent-nondimensional-dissipated-chain-scission-energy-per-segment-vs-nu")
         
-        # fig = plt.figure()
-        # plt.scatter(
-        #     self.lmbda_c_eq_intgr_nu, self.xi_c_intgr_nu, color='blue',
-        #     marker='o', alpha=1, linewidth=2.5,
-        #     label=cp.paper_authors2polymer_type_label_dict[self.paper_authors])
-        # plt.plot(
-        #     self.lmbda_c_eq_fit_intgr_nu, self.xi_c_fit_intgr_nu,
-        #     linestyle='--', color='red', alpha=1, linewidth=2.5,
-        #     label=r'$u\textrm{FJC model fit}$')
-        # plt.legend(loc='best', fontsize=18)
-        # plt.grid(True, alpha=0.25)
-        # plt.xlim([0, 1.15])
-        # plt.xticks(fontsize=20)
-        # plt.yticks(fontsize=20)
-        # save_current_figure(
-        #     self.savedir, r'$\lambda_c^{eq}$', 30, r'$\xi_{c}$', 30,
-        #     self.data_file_prefix+"-intgr_nu-xi_c-vs-lmbda_c_eq-gen-uFJC-curve-fit")
-
-        # # plot rate-dependent chain results
-        # t_max = 0
-        # fig, (ax1, ax2, ax3, ax4) = plt.subplots(
-        #     4, 1, gridspec_kw={'height_ratios': [2, 1, 1, 1]}, sharex=True)
-        # for f_c_dot_indx in range(len(cp.f_c_dot_list)):
-        #     t_max = max(
-        #         [t_max, self.rate_dependent_t_steps___f_c_dot_chunk[f_c_dot_indx][-1]])
-        #     ax1.semilogx(
-        #         self.rate_dependent_t_steps___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_xi_c___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5,
-        #         label=cp.f_c_dot_label_list[f_c_dot_indx])
-        #     ax2.semilogx(
-        #         self.rate_dependent_t_steps___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_lmbda_nu___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        #     ax3.semilogx(
-        #         self.rate_dependent_t_steps___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_gamma_c___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        #     ax4.semilogx(
-        #         self.rate_dependent_t_steps___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_overline_epsilon_cnu_diss_hat___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        # ax1.hlines(
-        #     y=self.xi_c_max, xmin=0, xmax=t_max, linestyle='--', color='black',
-        #     alpha=1, linewidth=1)
-        # ax1.legend(loc='best', fontsize=12)
-        # ax1.tick_params(axis='y', labelsize=16)
-        # ax1.set_ylabel(r'$\xi_c$', fontsize=20)
-        # ax1.grid(True, alpha=0.25)
-        # ax2.tick_params(axis='y', labelsize=16)
-        # ax2.set_ylabel(r'$\lambda_{\nu}$', fontsize=20)
-        # ax2.grid(True, alpha=0.25)
-        # ax3.tick_params(axis='y', labelsize=16)
-        # ax3.set_ylabel(r'$\gamma_c$', fontsize=20)
-        # ax3.grid(True, alpha=0.25)
-        # ax4.tick_params(axis='y', labelsize=16)
-        # ax4.set_yticks([0.0, 0.25, 0.5])
-        # ax4.set_ylabel(
-        #     r'$\overline{\hat{\varepsilon}_{c\nu}^{diss}}$', fontsize=20)
-        # ax4.grid(True, alpha=0.25)
-        # plt.xticks(fontsize=16)
-        # plt.xlabel(r'$t~(sec)$', fontsize=20)
-        # save_current_figure_no_labels(
-        #     self.savedir,
-        #     self.data_file_prefix+"-rate-dependent-xi_c-lmbda_nu-gamma_c-overline_epsilon_cnu_diss_hat-vs-time")
+        fig = plt.figure()
+        plt.semilogx(
+            cp.nu_list, self.LT_overline_epsilon_cnu_diss_hat_crit_list,
+            linestyle='-', color='red', alpha=1, linewidth=2.5,
+            label=self.LT_label)
+        plt.semilogx(
+            cp.nu_list, self.CR_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list,
+            linestyle='--', color='black', alpha=1, linewidth=2.5,
+            label=self.f_c_max_label)
+        plt.semilogx(
+            cp.nu_list,
+            self.CR_typcl_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list,
+            linestyle=':', color='black', alpha=1, linewidth=2.5,
+            label=self.typcl_AFM_exprmt_f_c_max_label)
+        if self.chain_backbone_bond_type == "c-c":
+            plt.semilogx(
+                cp.nu_list,
+                self.CR_intrmdt_AFM_exprmt_xi_c_max_overline_epsilon_cnu_diss_hat_crit_list,
+                linestyle='-.', color='black', alpha=1, linewidth=2.5,
+                label=self.intrmdt_AFM_exprmt_f_c_max_label)
+        plt.semilogx(
+            cp.nu_list, self.overline_epsilon_cnu_diss_hat_crit_list,
+            linestyle='-', color='blue', alpha=1, linewidth=2.5,
+            label=self.ufjc_label)
+        plt.legend(loc='best', fontsize=10)
+        plt.ylim([-0.05, 1.05])
+        plt.yticks(fontsize=16)
+        plt.xticks(fontsize=16)
+        plt.grid(True, alpha=0.25)
+        save_current_figure(
+            self.savedir, r'$\nu$', 20,
+            r'$\overline{\hat{\varepsilon}_{c\nu}^{diss}}$', 20,
+            self.data_file_prefix+"-rate-independent-nondimensional-scaled-dissipated-chain-scission-energy-per-segment-vs-nu")
         
-        # # plot rate-independent and rate-dependent chain results
-        # # together
-        # # plot rate-dependent chain results
-        # lmbda_c_eq_max = 0
-        # fig, (ax1, ax2, ax3, ax4) = plt.subplots(
-        #     4, 1, gridspec_kw={'height_ratios': [1.25, 0.75, 2, 1.5]},
-        #     sharex=True)
-        # ax1.scatter(
-        #     self.lmbda_c_eq_intgr_nu, self.xi_c_intgr_nu, color='red',
-        #     marker='o', alpha=1, linewidth=1,
-        #     label=cp.paper_authors2polymer_type_label_dict[self.paper_authors])
-        # for f_c_dot_indx in range(len(cp.f_c_dot_list)):
-        #     lmbda_c_eq_max = max(
-        #         [lmbda_c_eq_max, self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx][-1]])
-        #     ax1.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_xi_c___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        #     ax2.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_lmbda_nu___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        #     ax3.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_gamma_c___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5, label=cp.f_c_dot_label_list[f_c_dot_indx])
-        #     ax4.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_overline_epsilon_cnu_diss_hat___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        # ax1.hlines(
-        #     y=self.xi_c_max, xmin=-0.05, xmax=lmbda_c_eq_max + 0.05,
-        #     linestyle='--', color='black', alpha=1, linewidth=1)
-        # # plot rate-independent chain results
-        # ax1.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_xi_c, linestyle='-', color='blue',
-        #     alpha=1, linewidth=2.5, label=r'$\textrm{rate-independent chain}$')
-        # ax2.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_lmbda_nu, linestyle='-', color='blue',
-        #     alpha=1, linewidth=2.5)
-        # ax3.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_p_c_sci_hat, linestyle='-', color='blue',
-        #     alpha=1, linewidth=2.5)
-        # ax4.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_overline_epsilon_cnu_sci_hat, linestyle='-',
-        #     color='black', alpha=1, linewidth=2.5)
-        # ax4.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_overline_epsilon_cnu_diss_hat, linestyle='-',
-        #     color='blue', alpha=1, linewidth=2.5)
-
-        # ax1.legend(loc='best', fontsize=12)
-        # ax1.tick_params(axis='y', labelsize=16)
-        # ax1.set_ylabel(r'$\xi_c$', fontsize=20)
-        # ax1.grid(True, alpha=0.25)
-        # ax2.tick_params(axis='y', labelsize=16)
-        # ax2.set_ylabel(r'$\lambda_{\nu}$', fontsize=20)
-        # ax2.grid(True, alpha=0.25)
-        # ax3.legend(loc='best', fontsize=12)
-        # ax3.tick_params(axis='y', labelsize=16)
-        # ax3.set_ylabel(r'$\gamma_c,~\hat{p}_c^{sci}$', fontsize=20)
-        # ax3.grid(True, alpha=0.25)
-        # ax4.set_yticks([0.0, 0.25, 0.5])
-        # ax4.tick_params(axis='y', labelsize=16)
-        # ax4.set_ylabel(
-        #     r'$\overline{\hat{\varepsilon}_{c\nu}^{sci}},~\overline{\hat{\varepsilon}_{c\nu}^{diss}}$',
-        #     fontsize=20)
-        # ax4.grid(True, alpha=0.25)
-        # plt.xlim([-0.05, lmbda_c_eq_max + 0.05])
-        # plt.xticks(fontsize=16)
-        # plt.xlabel(r'$\lambda_c^{eq}$', fontsize=20)
-        # save_current_figure_no_labels(
-        #     self.savedir,
-        #     self.data_file_prefix+"-rate-independent-and-rate-dependent-chains-vs-lmbda_c_eq")
-
-        # # plot rate-independent and rate-dependent chain results
-        # # together while omitting chain scission energy
-        # # plot rate-dependent chain results
-        # lmbda_c_eq_max = 0
-        # fig, (ax1, ax2, ax3, ax4) = plt.subplots(
-        #     4, 1, gridspec_kw={'height_ratios': [1.25, 0.75, 2, 1.5]},
-        #     sharex=True)
-        # ax1.scatter(
-        #     self.lmbda_c_eq_intgr_nu, self.xi_c_intgr_nu, color='red',
-        #     marker='o', alpha=1, linewidth=1,
-        #     label=cp.paper_authors2polymer_type_label_dict[self.paper_authors])
-        # for f_c_dot_indx in range(len(cp.f_c_dot_list)):
-        #     lmbda_c_eq_max = max([lmbda_c_eq_max, self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx][-1]])
-        #     ax1.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_xi_c___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        #     ax2.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_lmbda_nu___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        #     ax3.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_gamma_c___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5,
-        #         label=cp.f_c_dot_label_list[f_c_dot_indx])
-        #     ax4.plot(
-        #         self.rate_dependent_lmbda_c_eq___f_c_dot_chunk[f_c_dot_indx],
-        #         self.rate_dependent_overline_epsilon_cnu_diss_hat___f_c_dot_chunk[f_c_dot_indx],
-        #         linestyle='-', color=cp.f_c_dot_color_list[f_c_dot_indx],
-        #         alpha=1, linewidth=2.5)
-        # ax1.hlines(
-        #     y=self.xi_c_max, xmin=-0.05, xmax=lmbda_c_eq_max + 0.05,
-        #     linestyle='--', color='black', alpha=1, linewidth=1)
-        # # plot rate-independent chain results
-        # ax1.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_xi_c, linestyle='-', color='blue',
-        #     alpha=1, linewidth=2.5,
-        #     label=r'$\textrm{rate-independent chain}$')
-        # ax2.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_lmbda_nu, linestyle='-', color='blue',
-        #     alpha=1, linewidth=2.5)
-        # ax3.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_p_c_sci_hat, linestyle='-', color='blue',
-        #     alpha=1, linewidth=2.5)
-        # ax4.plot(
-        #     self.rate_independent_lmbda_c_eq,
-        #     self.rate_independent_overline_epsilon_cnu_diss_hat, linestyle='-',
-        #     color='blue', alpha=1, linewidth=2.5)
-
-        # ax1.legend(loc='best', fontsize=12)
-        # ax1.tick_params(axis='y', labelsize=16)
-        # ax1.set_ylabel(r'$\xi_c$', fontsize=20)
-        # ax1.grid(True, alpha=0.25)
-        # ax2.tick_params(axis='y', labelsize=16)
-        # ax2.set_ylabel(r'$\lambda_{\nu}$', fontsize=20)
-        # ax2.grid(True, alpha=0.25)
-        # ax3.tick_params(axis='y', labelsize=16)
-        # ax3.legend(loc='best', fontsize=12)
-        # ax3.set_ylabel(r'$\gamma_c,~\hat{p}_c^{sci}$', fontsize=20)
-        # ax3.grid(True, alpha=0.25)
-        # ax4.set_yticks([0.0, 0.25, 0.5])
-        # ax4.tick_params(axis='y', labelsize=16)
-        # ax4.set_ylabel(
-        #     r'$\overline{\hat{\varepsilon}_{c\nu}^{sci}},~\overline{\hat{\varepsilon}_{c\nu}^{diss}}$',
-        #     fontsize=20)
-        # ax4.grid(True, alpha=0.25)
-        # plt.xlim([-0.05, lmbda_c_eq_max + 0.05])
-        # plt.xticks(fontsize=16)
-        # plt.xlabel(r'$\lambda_c^{eq}$', fontsize=20)
-        # save_current_figure_no_labels(
-        #     self.savedir,
-        #     self.data_file_prefix+"-rate-independent-and-rate-dependent-chains-vs-lmbda_c_eq-no-epsilon_cnu_diss")
-
+        fig = plt.figure()
+        plt.loglog(
+            cp.nu_list, self.LT_g_c_crit_list,
+            linestyle='-', color='red', alpha=1, linewidth=2.5,
+            label=self.LT_label)
+        plt.loglog(
+            cp.nu_list, self.LT_inext_gaussian_g_c_crit_list,
+            linestyle='--', color='red', alpha=1, linewidth=2.5,
+            label=self.LT_inext_gaussian_label)
+        plt.loglog(
+            cp.nu_list, self.CR_xi_c_max_g_c_crit_list,
+            linestyle='--', color='black', alpha=1, linewidth=2.5,
+            label=self.f_c_max_label)
+        plt.loglog(
+            cp.nu_list,
+            self.CR_typcl_AFM_exprmt_xi_c_max_g_c_crit_list,
+            linestyle=':', color='black', alpha=1, linewidth=2.5,
+            label=self.typcl_AFM_exprmt_f_c_max_label)
+        if self.chain_backbone_bond_type == "c-c":
+            plt.loglog(
+                cp.nu_list,
+                self.CR_intrmdt_AFM_exprmt_xi_c_max_g_c_crit_list,
+                linestyle='-.', color='black', alpha=1, linewidth=2.5,
+                label=self.intrmdt_AFM_exprmt_f_c_max_label)
+        plt.loglog(
+            cp.nu_list, self.g_c_crit_list,
+            linestyle='-', color='blue', alpha=1, linewidth=2.5,
+            label=self.ufjc_label)
+        plt.legend(loc='best', fontsize=10)
+        # plt.ylim([-0.05, 1.05])
+        plt.yticks(fontsize=16)
+        plt.xticks(fontsize=16)
+        plt.grid(True, alpha=0.25)
+        save_current_figure(
+            self.savedir, r'$\nu$', 20,
+            r'$\beta G_c/(\eta^{ref}l_{\nu}^{eq})$', 20,
+            self.data_file_prefix+"-rate-independent-nondimensional-fracture-toughness-vs-nu")
+        
+        fig = plt.figure()
+        plt.loglog(
+            cp.nu_list, self.LT_overline_g_c_crit_list,
+            linestyle='-', color='red', alpha=1, linewidth=2.5,
+            label=self.LT_label)
+        plt.loglog(
+            cp.nu_list, self.LT_inext_gaussian_overline_g_c_crit_list,
+            linestyle='--', color='red', alpha=1, linewidth=2.5,
+            label=self.LT_inext_gaussian_label)
+        plt.loglog(
+            cp.nu_list, self.CR_xi_c_max_overline_g_c_crit_list,
+            linestyle='--', color='black', alpha=1, linewidth=2.5,
+            label=self.f_c_max_label)
+        plt.loglog(
+            cp.nu_list,
+            self.CR_typcl_AFM_exprmt_xi_c_max_overline_g_c_crit_list,
+            linestyle=':', color='black', alpha=1, linewidth=2.5,
+            label=self.typcl_AFM_exprmt_f_c_max_label)
+        if self.chain_backbone_bond_type == "c-c":
+            plt.loglog(
+                cp.nu_list,
+                self.CR_intrmdt_AFM_exprmt_xi_c_max_overline_g_c_crit_list,
+                linestyle='-.', color='black', alpha=1, linewidth=2.5,
+                label=self.intrmdt_AFM_exprmt_f_c_max_label)
+        plt.loglog(
+            cp.nu_list, self.overline_g_c_crit_list,
+            linestyle='-', color='blue', alpha=1, linewidth=2.5,
+            label=self.ufjc_label)
+        plt.legend(loc='best', fontsize=10)
+        # plt.ylim([-0.05, 1.05])
+        plt.yticks(fontsize=16)
+        plt.xticks(fontsize=16)
+        plt.grid(True, alpha=0.25)
+        save_current_figure(
+            self.savedir, r'$\nu$', 20,
+            r'$\beta \overline{G_c}/(\eta^{ref}l_{\nu}^{eq})$', 20,
+            self.data_file_prefix+"-rate-independent-nondimensional-scaled-fracture-toughness-vs-nu")
 
 if __name__ == '__main__':
 
@@ -728,25 +596,16 @@ if __name__ == '__main__':
         "al-maawali-et-al": "chain-a", "hugel-et-al": "chain-a"
     }
 
-    # AFM_chain_tensile_tests_characterizer_list = [
-    #     AFMChainTensileTestCurveFitCharacterizer(
-    #         paper_authors=AFM_chain_tensile_test[0],
-    #         chain=AFM_chain_tensile_test[1], T=T)
-    #     for AFM_chain_tensile_test in AFM_chain_tensile_test_list
-    # ]
+    al_maawali_et_al_rate_independent_characterizer = (
+        RateIndependentFractureToughnessCharacterizer(
+            paper_authors="al-maawali-et-al", chain="chain-a", T=T)
+    )
+    al_maawali_et_al_rate_independent_characterizer.characterization()
+    al_maawali_et_al_rate_independent_characterizer.finalization()
 
-    # for AFM_chain_tensile_test_indx \
-    #     in range(len(AFM_chain_tensile_tests_characterizer_list)):
-    #     AFM_chain_tensile_tests_characterizer_list[AFM_chain_tensile_test_indx].characterization()
-    #     AFM_chain_tensile_tests_characterizer_list[AFM_chain_tensile_test_indx].finalization()
-    
-    # characterizer = AFMChainTensileTestCurveFitCharacterizer(
-    #     paper_authors=AFM_chain_tensile_test_list[0][0],
-    #     chain=AFM_chain_tensile_test_list[0][1], T=T)
-    # characterizer.characterization()
-    # characterizer.finalization()
-
-    characterizer = AFMChainTensileTestCurveFitCharacterizer(
-        paper_authors="al-maawali-et-al", chain="chain-a", T=T)
-    characterizer.characterization()
-    characterizer.finalization()
+    hugel_et_al_rate_independent_characterizer = (
+        RateIndependentFractureToughnessCharacterizer(
+            paper_authors="hugel-et-al", chain="chain-a", T=T)
+    )
+    hugel_et_al_rate_independent_characterizer.characterization()
+    hugel_et_al_rate_independent_characterizer.finalization()
