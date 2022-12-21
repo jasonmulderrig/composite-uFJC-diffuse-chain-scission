@@ -1,11 +1,11 @@
-"""The single-chain rate-independent fracture toughness characterization
+"""The single-chain rate-dependent fracture toughness characterization
 module for composite uFJCs that undergo scission
 """
 
 # import external modules
 from __future__ import division
 from composite_ufjc_scission import (CompositeuFJCScissionCharacterizer,
-    RateIndependentScissionCompositeuFJC,
+    RateDependentScissionCompositeuFJC,
     latex_formatting_figure,
     save_current_figure,
     save_current_figure_no_labels,
@@ -18,16 +18,16 @@ from scipy import constants
 import matplotlib.pyplot as plt
 
 
-class RateIndependentFractureToughnessCharacterizer(
+class RateDependentFractureToughnessCharacterizer(
         CompositeuFJCScissionCharacterizer):
-    """The characterization class assessing rate-independent fracture
+    """The characterization class assessing rate-dependent fracture
     toughness for composite uFJCs that undergo scission. It inherits all
     attributes and methods from the
     ``CompositeuFJCScissionCharacterizer`` class.
     """
     def __init__(self, paper_authors, chain, T):
         """Initializes the
-        ``RateIndependentFractureToughnessCharacterizer`` class by
+        ``RateDependentFractureToughnessCharacterizer`` class by
         initializing and inheriting all attributes and methods from the
         ``CompositeuFJCScissionCharacterizer`` class.
         """
@@ -39,9 +39,13 @@ class RateIndependentFractureToughnessCharacterizer(
     
     def set_user_parameters(self):
         """Set user-defined parameters"""
-        k_B  = constants.value(u'Boltzmann constant') # J/K
-        N_A  = constants.value(u'Avogadro constant') # 1/mol
-        beta = 1. / (k_B*self.T) # 1/J
+        k_B     = constants.value(u'Boltzmann constant') # J/K
+        h       = constants.value(u'Planck constant') # J/Hz
+        hbar    = h / (2*np.pi) # J*sec
+        beta    = 1. / (k_B*self.T) # 1/J
+        omega_0 = 1. / (beta*hbar) # J/(J*sec) = 1/sec
+
+        beta = beta / (1e9*1e9) # 1/J = 1/(N*m) -> 1/(nN*m) -> 1/(nN*nm)
 
         p = self.parameters
 
@@ -949,14 +953,14 @@ if __name__ == '__main__':
     }
 
     al_maawali_et_al_rate_independent_characterizer = (
-        RateIndependentFractureToughnessCharacterizer(
+        RateDependentFractureToughnessCharacterizer(
             paper_authors="al-maawali-et-al", chain="chain-a", T=T)
     )
     # al_maawali_et_al_rate_independent_characterizer.characterization()
     al_maawali_et_al_rate_independent_characterizer.finalization()
 
     hugel_et_al_rate_independent_characterizer = (
-        RateIndependentFractureToughnessCharacterizer(
+        RateDependentFractureToughnessCharacterizer(
             paper_authors="hugel-et-al", chain="chain-a", T=T)
     )
     # hugel_et_al_rate_independent_characterizer.characterization()
