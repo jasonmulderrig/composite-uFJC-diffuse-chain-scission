@@ -1,13 +1,20 @@
 # import necessary libraries
 from __future__ import division
 from dolfin import *
-from ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionProblem, GeneralizeduFJCNetwork, gmsh_mesher, mesh_topologier, latex_formatting_figure, save_current_figure
+from composite_ufjc_diffuse_chain_scission import (
+    CompositeuFJCDiffuseChainScissionProblem,
+    TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqualStrainRateIndependentCompositeuFJCNetwork,
+    gmsh_mesher,
+    mesh_topologier,
+    latex_formatting_figure,
+    save_current_figure
+)
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 
-# Problem
-class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqualStrainRateIndependentTest(uFJCDiffuseChainScissionProblem):
+
+class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqualStrainRateIndependentTest(CompositeuFJCDiffuseChainScissionProblem):
 
     def __init__(self, L, H, elem_size=0.01):
 
@@ -15,7 +22,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         self.H = H
         self.elem_size = elem_size
         
-        uFJCDiffuseChainScissionProblem.__init__(self)
+        CompositeuFJCDiffuseChainScissionProblem.__init__(self)
     
     def set_user_parameters(self):
         """
@@ -62,11 +69,19 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         p.deformation.t_step_chunk_modify_factor = t_step_chunk_modify_factor
         p.deformation.t_step_chunk               = t_step_chunk
 
-        p.post_processing.save_lmbda_c_eq_chunks   = True
-        p.post_processing.save_lmbda_nu_chunks     = True
-        p.post_processing.save_lmbda_nu_max_chunks = True
-        p.post_processing.save_upsilon_c_chunks    = True
-        p.post_processing.save_d_c_chunks          = True
+        p.post_processing.save_lmbda_c_eq_chunks                    = True
+        p.post_processing.save_lmbda_nu_chunks                      = True
+        p.post_processing.save_lmbda_nu_max_chunks                  = True
+        p.post_processing.save_upsilon_c_chunks                     = True
+        p.post_processing.save_d_c_chunks                           = True
+        p.post_processing.save_epsilon_cnu_diss_hat_chunks          = True
+        p.post_processing.save_Epsilon_cnu_diss_hat_chunks          = True
+        p.post_processing.save_epsilon_c_diss_hat_chunks            = True
+        p.post_processing.save_Epsilon_c_diss_hat_chunks            = True
+        p.post_processing.save_overline_epsilon_cnu_diss_hat_chunks = True
+        p.post_processing.save_overline_Epsilon_cnu_diss_hat_chunks = True
+        p.post_processing.save_overline_epsilon_c_diss_hat_chunks   = True
+        p.post_processing.save_overline_Epsilon_c_diss_hat_chunks   = True
     
     def prefix(self):
         mp = self.parameters.material
@@ -234,9 +249,10 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         """
         Return material that will be set in the model
         """
-        material = GeneralizeduFJCNetwork(self.parameters, self.strong_form_initialize_sigma_chunks, self.lr_cg_deformation_gradient_func, self.strong_form_calculate_sigma_func, self.strong_form_store_calculated_sigma_chunks, self.weak_form_initialize_deformation_sigma_chunks, self.weak_form_store_calculated_sigma_chunks, self.weak_form_store_calculated_deformation_chunks)
-        
+        material = TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqualStrainRateIndependentCompositeuFJCNetwork(self.parameters, self.strong_form_initialize_sigma_chunks, self.lr_cg_deformation_gradient_func, self.strong_form_calculate_sigma_func, self.strong_form_store_calculated_sigma_chunks, self.weak_form_initialize_deformation_sigma_chunks, self.weak_form_store_calculated_sigma_chunks, self.weak_form_store_calculated_deformation_chunks)
+
         return material
+    
     
     def define_bc_u(self):
         """
@@ -714,6 +730,167 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             plt.legend(loc='best')
             plt.grid(True, alpha=0.25)
             save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$D_c$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-D_c")
+        
+        # epsilon_cnu_diss_hat
+        if ppp.save_epsilon_cnu_diss_hat_chunks:
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                epsilon_cnu_diss_hat___meshpoint_chunk = [epsilon_cnu_diss_hat_chunk[meshpoint_indx] for epsilon_cnu_diss_hat_chunk in weak_form_chunks.epsilon_cnu_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    epsilon_cnu_diss_hat___nu_chunk = [epsilon_cnu_diss_hat_chunk[nu_chunk_indx] for epsilon_cnu_diss_hat_chunk in epsilon_cnu_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.t_chunks, epsilon_cnu_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$t$', 30, r'$\hat{\varepsilon}_{c\nu}^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-epsilon_cnu_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+            
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                epsilon_cnu_diss_hat___meshpoint_chunk = [epsilon_cnu_diss_hat_chunk[meshpoint_indx] for epsilon_cnu_diss_hat_chunk in weak_form_chunks.epsilon_cnu_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    epsilon_cnu_diss_hat___nu_chunk = [epsilon_cnu_diss_hat_chunk[nu_chunk_indx] for epsilon_cnu_diss_hat_chunk in epsilon_cnu_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.lmbda_1_chunks, epsilon_cnu_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\hat{\varepsilon}_{c\nu}^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-epsilon_cnu_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+        
+        # Epsilon_cnu_diss_hat
+        if ppp.save_Epsilon_cnu_diss_hat_chunks:
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                Epsilon_cnu_diss_hat___meshpoint_chunk = [Epsilon_cnu_diss_hat_chunk[meshpoint_indx] for Epsilon_cnu_diss_hat_chunk in weak_form_chunks.Epsilon_cnu_diss_hat_chunks]
+                plt.plot(deformation.t_chunks, Epsilon_cnu_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$t$', 30, r'$\hat{E}_{c\nu}^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-Epsilon_cnu_diss_hat")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                Epsilon_cnu_diss_hat___meshpoint_chunk = [Epsilon_cnu_diss_hat_chunk[meshpoint_indx] for Epsilon_cnu_diss_hat_chunk in weak_form_chunks.Epsilon_cnu_diss_hat_chunks]
+                plt.plot(deformation.lmbda_1_chunks, Epsilon_cnu_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\hat{E}_{c\nu}^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-Epsilon_cnu_diss_hat")
+        
+        # epsilon_c_diss_hat
+        if ppp.save_epsilon_c_diss_hat_chunks:
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                epsilon_c_diss_hat___meshpoint_chunk = [epsilon_c_diss_hat_chunk[meshpoint_indx] for epsilon_c_diss_hat_chunk in weak_form_chunks.epsilon_c_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    epsilon_c_diss_hat___nu_chunk = [epsilon_c_diss_hat_chunk[nu_chunk_indx] for epsilon_c_diss_hat_chunk in epsilon_c_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.t_chunks, epsilon_c_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$t$', 30, r'$\hat{\varepsilon}_c^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-epsilon_c_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+            
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                epsilon_c_diss_hat___meshpoint_chunk = [epsilon_c_diss_hat_chunk[meshpoint_indx] for epsilon_c_diss_hat_chunk in weak_form_chunks.epsilon_c_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    epsilon_c_diss_hat___nu_chunk = [epsilon_c_diss_hat_chunk[nu_chunk_indx] for epsilon_c_diss_hat_chunk in epsilon_c_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.lmbda_1_chunks, epsilon_c_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\hat{\varepsilon}_c^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-epsilon_c_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+        
+        # Epsilon_c_diss_hat
+        if ppp.save_Epsilon_c_diss_hat_chunks:
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                Epsilon_c_diss_hat___meshpoint_chunk = [Epsilon_c_diss_hat_chunk[meshpoint_indx] for Epsilon_c_diss_hat_chunk in weak_form_chunks.Epsilon_c_diss_hat_chunks]
+                plt.plot(deformation.t_chunks, Epsilon_c_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$t$', 30, r'$\hat{E}_c^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-Epsilon_c_diss_hat")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                Epsilon_c_diss_hat___meshpoint_chunk = [Epsilon_c_diss_hat_chunk[meshpoint_indx] for Epsilon_c_diss_hat_chunk in weak_form_chunks.Epsilon_c_diss_hat_chunks]
+                plt.plot(deformation.lmbda_1_chunks, Epsilon_c_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\hat{E}_c^{diss}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-Epsilon_c_diss_hat")
+        
+        # overline_epsilon_cnu_diss_hat
+        if ppp.save_overline_epsilon_cnu_diss_hat_chunks:
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                overline_epsilon_cnu_diss_hat___meshpoint_chunk = [overline_epsilon_cnu_diss_hat_chunk[meshpoint_indx] for overline_epsilon_cnu_diss_hat_chunk in weak_form_chunks.overline_epsilon_cnu_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    overline_epsilon_cnu_diss_hat___nu_chunk = [overline_epsilon_cnu_diss_hat_chunk[nu_chunk_indx] for overline_epsilon_cnu_diss_hat_chunk in overline_epsilon_cnu_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.t_chunks, overline_epsilon_cnu_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$t$', 30, r'$\overline{\hat{\varepsilon}_{c\nu}^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-overline_epsilon_cnu_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+            
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                overline_epsilon_cnu_diss_hat___meshpoint_chunk = [overline_epsilon_cnu_diss_hat_chunk[meshpoint_indx] for overline_epsilon_cnu_diss_hat_chunk in weak_form_chunks.overline_epsilon_cnu_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    overline_epsilon_cnu_diss_hat___nu_chunk = [overline_epsilon_cnu_diss_hat_chunk[nu_chunk_indx] for overline_epsilon_cnu_diss_hat_chunk in overline_epsilon_cnu_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.lmbda_1_chunks, overline_epsilon_cnu_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\overline{\hat{\varepsilon}_{c\nu}^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-overline_epsilon_cnu_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+        
+        # overline_Epsilon_cnu_diss_hat
+        if ppp.save_overline_Epsilon_cnu_diss_hat_chunks:
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                overline_Epsilon_cnu_diss_hat___meshpoint_chunk = [overline_Epsilon_cnu_diss_hat_chunk[meshpoint_indx] for overline_Epsilon_cnu_diss_hat_chunk in weak_form_chunks.overline_Epsilon_cnu_diss_hat_chunks]
+                plt.plot(deformation.t_chunks, overline_Epsilon_cnu_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$t$', 30, r'$\overline{\hat{E}_{c\nu}^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-overline_Epsilon_cnu_diss_hat")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                overline_Epsilon_cnu_diss_hat___meshpoint_chunk = [overline_Epsilon_cnu_diss_hat_chunk[meshpoint_indx] for overline_Epsilon_cnu_diss_hat_chunk in weak_form_chunks.overline_Epsilon_cnu_diss_hat_chunks]
+                plt.plot(deformation.lmbda_1_chunks, overline_Epsilon_cnu_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\overline{\hat{E}_{c\nu}^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-overline_Epsilon_cnu_diss_hat")
+        
+
+        # overline_epsilon_c_diss_hat
+        if ppp.save_overline_epsilon_c_diss_hat_chunks:
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                overline_epsilon_c_diss_hat___meshpoint_chunk = [overline_epsilon_c_diss_hat_chunk[meshpoint_indx] for overline_epsilon_c_diss_hat_chunk in weak_form_chunks.overline_epsilon_c_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    overline_epsilon_c_diss_hat___nu_chunk = [overline_epsilon_c_diss_hat_chunk[nu_chunk_indx] for overline_epsilon_c_diss_hat_chunk in overline_epsilon_c_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.t_chunks, overline_epsilon_c_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$t$', 30, r'$\overline{\hat{\varepsilon}_c^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-overline_epsilon_c_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+            
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                fig = plt.figure()
+                overline_epsilon_c_diss_hat___meshpoint_chunk = [overline_epsilon_c_diss_hat_chunk[meshpoint_indx] for overline_epsilon_c_diss_hat_chunk in weak_form_chunks.overline_epsilon_c_diss_hat_chunks]
+                for nu_chunk_indx in range(len(mp.nu_chunks_list)):
+                    overline_epsilon_c_diss_hat___nu_chunk = [overline_epsilon_c_diss_hat_chunk[nu_chunk_indx] for overline_epsilon_c_diss_hat_chunk in overline_epsilon_c_diss_hat___meshpoint_chunk]
+                    plt.plot(deformation.lmbda_1_chunks, overline_epsilon_c_diss_hat___nu_chunk, linestyle='-', color=mp.nu_chunks_color_list[nu_chunk_indx], alpha=1, linewidth=2.5, label=mp.nu_chunks_label_list[nu_chunk_indx])
+                plt.legend(loc='best')
+                plt.grid(True, alpha=0.25)
+                save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\overline{\hat{\varepsilon}_c^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-overline_epsilon_c_diss_hat"+"_"+gp.meshpoints_name_list[meshpoint_indx])
+        
+        # overline_Epsilon_c_diss_hat
+        if ppp.save_overline_Epsilon_c_diss_hat_chunks:
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                overline_Epsilon_c_diss_hat___meshpoint_chunk = [overline_Epsilon_c_diss_hat_chunk[meshpoint_indx] for overline_Epsilon_c_diss_hat_chunk in weak_form_chunks.overline_Epsilon_c_diss_hat_chunks]
+                plt.plot(deformation.t_chunks, overline_Epsilon_c_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$t$', 30, r'$\overline{\hat{E}_c^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-overline_Epsilon_c_diss_hat")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                overline_Epsilon_c_diss_hat___meshpoint_chunk = [overline_Epsilon_c_diss_hat_chunk[meshpoint_indx] for overline_Epsilon_c_diss_hat_chunk in weak_form_chunks.overline_Epsilon_c_diss_hat_chunks]
+                plt.plot(deformation.lmbda_1_chunks, overline_Epsilon_c_diss_hat___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$\lambda_1$', 30, r'$\overline{\hat{E}_c^{diss}}$', 30, "fenics-weak-form-uniaxial-rate-independent-lmbda_1-vs-overline_Epsilon_c_diss_hat")
         
         # sigma
         if ppp.save_sigma_chunks:

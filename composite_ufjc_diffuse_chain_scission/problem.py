@@ -11,10 +11,10 @@ import pathlib
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
-class uFJCDiffuseChainScissionProblem(object):
+class CompositeuFJCDiffuseChainScissionProblem(object):
 
     """
-    Problem class for uFJC diffuse chain scission models
+    Problem class for composite uFJC diffuse chain scission models
     """
 
     ############################################################################################################################
@@ -261,6 +261,9 @@ class uFJCDiffuseChainScissionProblem(object):
         # grab deformation
         deformation = self.deformation
 
+        # weak form solver setup
+        self.fem = self.material.fenics_weak_form_solver_setup(self.fem)
+
         # time stepping
         for t_indx, t_val in enumerate(deformation.t):
             
@@ -276,7 +279,7 @@ class uFJCDiffuseChainScissionProblem(object):
             # Post-processing
             if deformation.t_indx in deformation.chunk_indx: # the elements in chunk_indx are guaranteed to be unique
                 weak_form_chunks = self.material.fenics_weak_form_chunk_post_processing(deformation, weak_form_chunks, self.fem, self.file_results, self.parameters)
-            
+
             self.set_user_fenics_weak_form_post_processing()
         
         # Store chunks and perform any finalizations, such as data visualization

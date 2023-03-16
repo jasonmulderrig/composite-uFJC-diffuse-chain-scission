@@ -1,7 +1,7 @@
 # import necessary libraries
 from __future__ import division
 from dolfin import *
-from ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionProblem, PhenomenologicalNetwork, gmsh_mesher, mesh_topologier, latex_formatting_figure, save_current_figure
+from composite_ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionProblem, PhenomenologicalNetwork, gmsh_mesher, mesh_topologier, latex_formatting_figure, save_current_figure
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy

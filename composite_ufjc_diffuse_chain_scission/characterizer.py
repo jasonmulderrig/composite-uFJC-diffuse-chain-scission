@@ -2,15 +2,12 @@
 from __future__ import division
 from dolfin import *
 from .default_parameters import default_parameters
-from .polydisperse_chain_network import GeneralizeduFJCNetwork
-from .single_chain import GeneralizeduFJC
 from .utility import generate_savedir
-import numpy as np
 
-class uFJCDiffuseChainScissionCharacterizer(object):
+class CompositeuFJCDiffuseChainScissionCharacterizer(object):
     
     """
-    Characterizer class for uFJCs
+    Characterizer class for composite uFJCs
     """
 
     def __init__(self):

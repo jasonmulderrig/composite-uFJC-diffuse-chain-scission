@@ -5,8 +5,6 @@
 # Import necessary libraries
 from __future__ import division
 from dolfin import *
-from .microsphere_quadrature import MicrosphereQuadratureScheme
-from .microdisk_quadrature import MicrodiskQuadratureScheme
 import sys
 import numpy as np
 from types import SimpleNamespace
@@ -91,14 +89,14 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNeoHookeanRateIndependentNetw
 
         return fem
     
-    def fenics_weak_form_initialization(self, parameters):
+    def fenics_weak_form_initialization(self, fem, parameters):
         gp      = parameters.geometry
         chunks  = SimpleNamespace()
 
         # initialize lists to zeros - necessary for irreversibility
         chunks = self.weak_form_initialize_deformation_sigma_chunks(gp.meshpoints, chunks)
         
-        return chunks
+        return fem, chunks
     
     def fenics_weak_form_chunk_post_processing(self, deformation, chunks, fem, file_results, parameters):
         """

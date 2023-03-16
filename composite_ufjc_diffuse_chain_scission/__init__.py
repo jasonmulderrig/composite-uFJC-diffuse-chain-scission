@@ -3,9 +3,12 @@ from dolfin import *
 from .characterizer import *
 from .default_parameters import *
 from .problem import *
-from .polydisperse_chain_network import *
+from .composite_ufjc_network import *
 from .phenomenological_network import *
-from .single_chain import *
+from .three_dimensional_eight_chain_model import *
+from .three_dimensional_microsphere_model import *
+from .two_dimensional_eight_chain_model import *
+from .two_dimensional_microcircle_model import *
 from .utility import *
 
 __version__ = "0.5.0"

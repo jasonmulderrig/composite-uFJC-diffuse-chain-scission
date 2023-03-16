@@ -1,7 +1,7 @@
 # import necessary libraries
 from __future__ import division
 from dolfin import *
-from ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionProblem, GeneralizeduFJCNetwork, gmsh_mesher, mesh_topologier, latex_formatting_figure, save_current_figure
+from composite_ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionProblem, GeneralizeduFJCNetwork, gmsh_mesher, mesh_topologier, latex_formatting_figure, save_current_figure
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
@@ -114,7 +114,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
     
     def prefix(self):
         mp = self.parameters.material
-        return mp.physical_dimensionality+"_"+mp.two_dimensional_formulation+"_"+mp.incompressibility_assumption+"_"+mp.macro2micro_deformation_assumption+"_"+mp.micro2macro_homogenization_scheme+"_"+mp.chain_level_load_sharing+"_"+mp.rate_dependence+"_"+"u_solve_damage__staggered_scheme_freeze_damage"
+        return mp.physical_dimensionality+"_"+mp.two_dimensional_formulation+"_"+mp.incompressibility_assumption+"_"+mp.macro2micro_deformation_assumption+"_"+mp.micro2macro_homogenization_scheme+"_"+mp.chain_level_load_sharing+"_"+mp.rate_dependence+"_"+"u_solve_damage__freeze_damage"
     
     def define_mesh(self):
         """

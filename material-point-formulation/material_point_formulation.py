@@ -1,7 +1,7 @@
 # import necessary libraries
 from __future__ import division
 from dolfin import *
-from ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionCharacterizer, EqualStrainGeneralizeduFJC, EqualForceGeneralizeduFJC, GeneralizeduFJC, latex_formatting_figure, save_current_figure, save_current_figure_no_labels
+from composite_ufjc_diffuse_chain_scission import uFJCDiffuseChainScissionCharacterizer, EqualStrainGeneralizeduFJC, EqualForceGeneralizeduFJC, GeneralizeduFJC, latex_formatting_figure, save_current_figure, save_current_figure_no_labels
 import numpy as np
 from math import floor, log10
 from scipy import optimize
