@@ -7,7 +7,7 @@ from scipy import constants
 def default_parameters():
 
     parameters = SimpleNamespace()
-    subset_list = ["characterizer", "pre_processing", "problem", "geometry", "material", "fem", "deformation", "solver_u", "solver_u_settings", "post_processing"]
+    subset_list = ["characterizer", "pre_processing", "problem", "geometry", "material", "fem", "deformation", "solver_u", "solver_u_settings", "solver_lmbda_c_tilde", "solver_lmbda_c_tilde_settings", "post_processing"]
     for subparset in subset_list:
         subparset_is = eval("default_"+subparset+"_parameters()")
         setattr(parameters, subparset, subparset_is)
@@ -229,10 +229,12 @@ def default_fem_parameters():
     fem = SimpleNamespace()
 
     u_degree                = 1
+    lmbda_c_tilde_degree    = 1
     metadata                = {"quadrature_degree": 4}
     tensor2vector_indx_dict = {"11": 0, "12": 1, "13": 2, "21": 3, "22": 4, "23": 5, "31": 6, "32": 7, "33": 8}
 
     fem.u_degree                = u_degree
+    fem.lmbda_c_tilde_degree    = lmbda_c_tilde_degree
     fem.metadata                = metadata
     fem.tensor2vector_indx_dict = tensor2vector_indx_dict
     
@@ -246,37 +248,37 @@ def default_deformation_parameters():
     deformation.deformation_type = deformation_type
 
     # general network deformation parameters
-    K_G                     = 100
-    lmbda_damping_init      = 1e3
-    min_lmbda_damping_val   = 1e-8
-    iter_max_Gamma_val_NR   = 1000
-    tol_Gamma_val_NR        = 1e-2
-    iter_max_lmbda_c_val_NR = 1000
-    tol_lmbda_c_val_NR      = 1e-4
-    iter_max_stag_NR        = 2000
-    tol_lmbda_c_val_stag_NR = 1e-4
-    tol_Gamma_val_stag_NR   = 1e-2
-    epsilon                 = 1e-12
-    max_J_val_cond          = 1e12
-    iter_max_d_c_val        = 1000
-    tol_d_c_val             = 1e-4
-    k_cond_val              = 1e-8
+    K_G                         = 100
+    lmbda_damping_init          = 1e3
+    min_lmbda_damping_val       = 1e-8
+    iter_max_Gamma_val_NR       = 1000
+    tol_Gamma_val_NR            = 1e-2
+    iter_max_lmbda_c_val_NR     = 1000
+    tol_lmbda_c_val_NR          = 1e-4
+    iter_max_stag_NR            = 2000
+    tol_lmbda_c_val_stag_NR     = 1e-4
+    tol_Gamma_val_stag_NR       = 1e-2
+    epsilon                     = 1e-12
+    max_J_val_cond              = 1e12
+    itrtn_max_lmbda_c_tilde_val = 1000
+    tol_lmbda_c_tilde_val       = 1e-4
+    k_cond_val                  = 1e-8
 
-    deformation.K_G                     = K_G
-    deformation.lmbda_damping_init      = lmbda_damping_init
-    deformation.min_lmbda_damping_val   = min_lmbda_damping_val
-    deformation.iter_max_Gamma_val_NR   = iter_max_Gamma_val_NR
-    deformation.tol_Gamma_val_NR        = tol_Gamma_val_NR
-    deformation.iter_max_lmbda_c_val_NR = iter_max_lmbda_c_val_NR
-    deformation.tol_lmbda_c_val_NR      = tol_lmbda_c_val_NR
-    deformation.iter_max_stag_NR        = iter_max_stag_NR
-    deformation.tol_lmbda_c_val_stag_NR = tol_lmbda_c_val_stag_NR
-    deformation.tol_Gamma_val_stag_NR   = tol_Gamma_val_stag_NR
-    deformation.epsilon                 = epsilon
-    deformation.max_J_val_cond          = max_J_val_cond
-    deformation.iter_max_d_c_val        = iter_max_d_c_val
-    deformation.tol_d_c_val             = tol_d_c_val
-    deformation.k_cond_val              = k_cond_val
+    deformation.K_G                         = K_G
+    deformation.lmbda_damping_init          = lmbda_damping_init
+    deformation.min_lmbda_damping_val       = min_lmbda_damping_val
+    deformation.iter_max_Gamma_val_NR       = iter_max_Gamma_val_NR
+    deformation.tol_Gamma_val_NR            = tol_Gamma_val_NR
+    deformation.iter_max_lmbda_c_val_NR     = iter_max_lmbda_c_val_NR
+    deformation.tol_lmbda_c_val_NR          = tol_lmbda_c_val_NR
+    deformation.iter_max_stag_NR            = iter_max_stag_NR
+    deformation.tol_lmbda_c_val_stag_NR     = tol_lmbda_c_val_stag_NR
+    deformation.tol_Gamma_val_stag_NR       = tol_Gamma_val_stag_NR
+    deformation.epsilon                     = epsilon
+    deformation.max_J_val_cond              = max_J_val_cond
+    deformation.itrtn_max_lmbda_c_tilde_val = itrtn_max_lmbda_c_tilde_val
+    deformation.tol_lmbda_c_tilde_val       = tol_lmbda_c_tilde_val
+    deformation.k_cond_val                  = k_cond_val
 
     # timing parameters
     t_min = 0.  # sec
@@ -325,6 +327,44 @@ def default_solver_u_settings_parameters():
 
     return solver_u_settings
 
+def default_solver_lmbda_c_tilde_parameters():
+    
+    solver_lmbda_c_tilde = SimpleNamespace()
+
+    nonlinear_solver = "snes"
+    symmetric        = True
+
+    solver_lmbda_c_tilde.nonlinear_solver = nonlinear_solver
+    solver_lmbda_c_tilde.symmetric        = symmetric
+
+    return solver_lmbda_c_tilde
+
+def default_solver_lmbda_c_tilde_settings_parameters():
+    
+    solver_lmbda_c_tilde_settings = SimpleNamespace()
+
+    linear_solver           = "umfpack"
+    method                  = "vinewtonssls"
+    line_search             = "basic"
+    maximum_iterations      = 50
+    absolute_tolerance      = 1e-8
+    relative_tolerance      = 1e-5
+    solution_tolerance      = 1e-5
+    report                  = True
+    error_on_nonconvergence = False
+
+    solver_lmbda_c_tilde_settings.linear_solver           = linear_solver
+    solver_lmbda_c_tilde_settings.method                  = method
+    solver_lmbda_c_tilde_settings.line_search             = line_search
+    solver_lmbda_c_tilde_settings.maximum_iterations      = maximum_iterations
+    solver_lmbda_c_tilde_settings.absolute_tolerance      = absolute_tolerance
+    solver_lmbda_c_tilde_settings.relative_tolerance      = relative_tolerance
+    solver_lmbda_c_tilde_settings.solution_tolerance      = solution_tolerance
+    solver_lmbda_c_tilde_settings.report                  = report
+    solver_lmbda_c_tilde_settings.error_on_nonconvergence = error_on_nonconvergence
+
+    return solver_lmbda_c_tilde_settings
+
 def default_post_processing_parameters():
     
     post_processing = SimpleNamespace()
@@ -342,8 +382,12 @@ def default_post_processing_parameters():
     save_lmbda_c_eq_chunks                    = False
     save_lmbda_nu_mesh                        = False
     save_lmbda_nu_chunks                      = False
-    save_lmbda_nu_max_mesh                    = False
-    save_lmbda_nu_max_chunks                  = False
+    save_lmbda_c_tilde                        = True
+    save_lmbda_c_tilde_chunks                 = True
+    save_lmbda_c_eq_tilde_mesh                = False
+    save_lmbda_c_eq_tilde_chunks              = False
+    save_lmbda_nu_tilde_mesh                  = False
+    save_lmbda_nu_tilde_chunks                = False
     save_upsilon_c_mesh                       = False
     save_upsilon_c_chunks                     = False
     save_Upsilon_c_mesh                       = True
@@ -380,8 +424,12 @@ def default_post_processing_parameters():
     post_processing.save_lmbda_c_eq_chunks                    = save_lmbda_c_eq_chunks
     post_processing.save_lmbda_nu_mesh                        = save_lmbda_nu_mesh
     post_processing.save_lmbda_nu_chunks                      = save_lmbda_nu_chunks
-    post_processing.save_lmbda_nu_max_mesh                    = save_lmbda_nu_max_mesh
-    post_processing.save_lmbda_nu_max_chunks                  = save_lmbda_nu_max_chunks
+    post_processing.save_lmbda_c_tilde                        = save_lmbda_c_tilde
+    post_processing.save_lmbda_c_tilde_chunks                 = save_lmbda_c_tilde_chunks
+    post_processing.save_lmbda_c_eq_tilde_mesh                = save_lmbda_c_eq_tilde_mesh
+    post_processing.save_lmbda_c_eq_tilde_chunks              = save_lmbda_c_eq_tilde_chunks
+    post_processing.save_lmbda_nu_tilde_mesh                  = save_lmbda_nu_tilde_mesh
+    post_processing.save_lmbda_nu_tilde_chunks                = save_lmbda_nu_tilde_chunks
     post_processing.save_upsilon_c_mesh                       = save_upsilon_c_mesh
     post_processing.save_upsilon_c_chunks                     = save_upsilon_c_chunks
     post_processing.save_Upsilon_c_mesh                       = save_Upsilon_c_mesh

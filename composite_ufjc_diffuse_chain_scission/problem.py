@@ -59,8 +59,10 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         # Variational formulation
         self.set_variational_formulation()
 
-        # Set Dirichlet boundary conditions
+        # Set Dirichlet boundary conditions for displacement
         self.fem.bc_u = self.define_bc_u()
+        # Set Dirichlet boundary conditions for non-local chain stretch
+        self.fem.bc_lmbda_c_tilde = self.define_bc_lmbda_c_tilde()
 
         # Deformation
         self.deformation = AppliedDeformation(self.parameters, self.F_func, self.initialize_lmbda, self.store_initialized_lmbda, self.calculate_lmbda_func, self.store_calculated_lmbda, self.store_calculated_lmbda_chunk_post_processing, self.calculate_u_func, self.save2deformation)
@@ -73,7 +75,18 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         self.file_results.parameters["functions_share_mesh"]  = ppp.functions_share_mesh
 
         self.fem.dict_solver_u_parameters = self.define_dict_solver_u_parameters()
+        self.fem.dict_solver_lmbda_c_tilde_parameters = self.define_dict_solver_lmbda_c_tilde_parameters()
 
+    def define_dict_solver_lmbda_c_tilde_parameters(self):
+        dict_solver_lmbda_c_tilde_parameters = vars(self.parameters.solver_lmbda_c_tilde)
+        dict_solver_lmbda_c_tilde_settings   = vars(self.parameters.solver_lmbda_c_tilde_settings)
+
+        nonlinear_solver_type = self.parameters.solver_lmbda_c_tilde.nonlinear_solver + "_solver"
+
+        dict_solver_lmbda_c_tilde_parameters[nonlinear_solver_type] = dict_solver_lmbda_c_tilde_settings
+
+        return dict_solver_lmbda_c_tilde_parameters
+    
     def define_dict_solver_u_parameters(self):
         dict_solver_u_parameters = vars(self.parameters.solver_u)
         dict_solver_u_settings   = vars(self.parameters.solver_u_settings)
@@ -142,6 +155,12 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
     def define_bc_u(self):
         """
         Return a list of boundary conditions on the displacement
+        """
+        return []
+    
+    def define_bc_lmbda_c_tilde(self):
+        """
+        Return a list of boundary conditions on the non-local chain stretch
         """
         return []
     
@@ -254,9 +273,7 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         Solve the evolution problem for the weak form in FEniCS through the applied deformation history at each time step
         """
         # initialization
-        fem, weak_form_chunks = self.material.fenics_weak_form_initialization(self.fem, self.parameters)
-        
-        self.fem = fem
+        self.fem, weak_form_chunks = self.material.fenics_weak_form_initialization(self.fem, self.parameters)
 
         # grab deformation
         deformation = self.deformation

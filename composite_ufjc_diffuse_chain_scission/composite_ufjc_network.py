@@ -169,12 +169,12 @@ class CompositeuFJCNetwork(object):
                 ]
 
             # Separate out specified parameters
-            nu_list                   = mp.nu_list
-            nu_min                    = min(nu_list)
-            nu_max                    = max(nu_list)
-            nu_num                    = len(nu_list)
-            P_nu_list                 = [P_nu(mp, nu_list[nu_indx]) for nu_indx in range(len(nu_list))]
-            P_nu_sum                  = np.sum(P_nu_list)
+            nu_list   = mp.nu_list
+            nu_min    = min(nu_list)
+            nu_max    = max(nu_list)
+            nu_num    = len(nu_list)
+            P_nu_list = [P_nu(mp, nu_list[nu_indx]) for nu_indx in range(len(nu_list))]
+            P_nu_sum  = np.sum(P_nu_list)
 
             cond_val                  = composite_ufjc_ufl_fenics_list[0].cond_val
             zeta_nu_char              = composite_ufjc_ufl_fenics_list[0].zeta_nu_char
@@ -199,18 +199,18 @@ class CompositeuFJCNetwork(object):
             self.P_nu_list                      = P_nu_list
             self.P_nu_sum                       = P_nu_sum
 
-            self.cond_val                       = cond_val
-            self.zeta_nu_char                   = zeta_nu_char
-            self.kappa_nu                       = kappa_nu
-            self.lmbda_nu_ref                   = lmbda_nu_ref
-            self.lmbda_c_eq_ref                 = lmbda_c_eq_ref
-            self.lmbda_nu_crit                  = lmbda_nu_crit
-            self.lmbda_c_eq_crit                = lmbda_c_eq_crit
-            self.xi_c_crit                      = xi_c_crit
-            self.lmbda_nu_pade2berg_crit        = lmbda_nu_pade2berg_crit
-            self.lmbda_c_eq_pade2berg_crit      = lmbda_c_eq_pade2berg_crit
-            self.A_nu_list                      = A_nu_list
-            self.Lambda_nu_ref_list             = Lambda_nu_ref_list
+            self.cond_val                  = cond_val
+            self.zeta_nu_char              = zeta_nu_char
+            self.kappa_nu                  = kappa_nu
+            self.lmbda_nu_ref              = lmbda_nu_ref
+            self.lmbda_c_eq_ref            = lmbda_c_eq_ref
+            self.lmbda_nu_crit             = lmbda_nu_crit
+            self.lmbda_c_eq_crit           = lmbda_c_eq_crit
+            self.xi_c_crit                 = xi_c_crit
+            self.lmbda_nu_pade2berg_crit   = lmbda_nu_pade2berg_crit
+            self.lmbda_c_eq_pade2berg_crit = lmbda_c_eq_pade2berg_crit
+            self.A_nu_list                 = A_nu_list
+            self.Lambda_nu_ref_list        = Lambda_nu_ref_list
 
         def equal_force_composite_ufjc_network(material_parameters):
             sys.exit("The equal force chain-level load sharing implementation has not been finalized yet. For now, please choose equal strain chain-level load sharing.")
@@ -221,6 +221,8 @@ class CompositeuFJCNetwork(object):
 
             if mp.nu_distribution == "itskov":
                 return (1/(mp.Delta_nu+1))*(1+(1/mp.Delta_nu))**(mp.nu_min-nu)
+            if mp.nu_distribution == "uniform":
+                return 1./len(mp.nu_list)
 
         # Check the correctness of the specified parameters
         if hasattr(parameters, "material") == False or hasattr(parameters, "deformation") == False:
@@ -247,22 +249,22 @@ class CompositeuFJCNetwork(object):
         self.nu_chunks_indx_list    = getattr(mp, "nu_chunks_indx_list")
         self.point_chunks_indx_list = getattr(mp, "point_chunks_indx_list")
 
-        self.deformation_type        = getattr(dp, "deformation_type")
-        self.K_G                     = getattr(dp, "K_G")
-        self.lmbda_damping_init      = getattr(dp, "lmbda_damping_init")
-        self.min_lmbda_damping_val   = getattr(dp, "min_lmbda_damping_val")
-        self.iter_max_Gamma_val_NR   = getattr(dp, "iter_max_Gamma_val_NR")
-        self.tol_Gamma_val_NR        = getattr(dp, "tol_Gamma_val_NR")
-        self.iter_max_lmbda_c_val_NR = getattr(dp, "iter_max_lmbda_c_val_NR")
-        self.tol_lmbda_c_val_NR      = getattr(dp, "tol_lmbda_c_val_NR")
-        self.iter_max_stag_NR        = getattr(dp, "iter_max_stag_NR")
-        self.tol_lmbda_c_val_stag_NR = getattr(dp, "tol_lmbda_c_val_stag_NR")
-        self.tol_Gamma_val_stag_NR   = getattr(dp, "tol_Gamma_val_stag_NR")
-        self.epsilon                 = getattr(dp, "epsilon")
-        self.max_J_val_cond          = getattr(dp, "max_J_val_cond")
-        self.iter_max_d_c_val        = getattr(dp, "iter_max_d_c_val")
-        self.tol_d_c_val             = getattr(dp, "tol_d_c_val")
-        self.k_cond_val              = getattr(dp, "k_cond_val")
+        self.deformation_type            = getattr(dp, "deformation_type")
+        self.K_G                         = getattr(dp, "K_G")
+        self.lmbda_damping_init          = getattr(dp, "lmbda_damping_init")
+        self.min_lmbda_damping_val       = getattr(dp, "min_lmbda_damping_val")
+        self.iter_max_Gamma_val_NR       = getattr(dp, "iter_max_Gamma_val_NR")
+        self.tol_Gamma_val_NR            = getattr(dp, "tol_Gamma_val_NR")
+        self.iter_max_lmbda_c_val_NR     = getattr(dp, "iter_max_lmbda_c_val_NR")
+        self.tol_lmbda_c_val_NR          = getattr(dp, "tol_lmbda_c_val_NR")
+        self.iter_max_stag_NR            = getattr(dp, "iter_max_stag_NR")
+        self.tol_lmbda_c_val_stag_NR     = getattr(dp, "tol_lmbda_c_val_stag_NR")
+        self.tol_Gamma_val_stag_NR       = getattr(dp, "tol_Gamma_val_stag_NR")
+        self.epsilon                     = getattr(dp, "epsilon")
+        self.max_J_val_cond              = getattr(dp, "max_J_val_cond")
+        self.itrtn_max_lmbda_c_tilde_val = getattr(dp, "itrtn_max_lmbda_c_tilde_val")
+        self.tol_lmbda_c_tilde_val       = getattr(dp, "tol_lmbda_c_tilde_val")
+        self.k_cond_val                  = getattr(dp, "k_cond_val")
 
 
         if self.scission_model != "analytical" and self.scission_model != "smoothstep" and self.scission_model != "sigmoid":
