@@ -7,7 +7,7 @@ from scipy import constants
 def default_parameters():
 
     parameters = SimpleNamespace()
-    subset_list = ["characterizer", "pre_processing", "problem", "geometry", "material", "fem", "deformation", "solver_u", "solver_u_settings", "solver_lmbda_c_tilde", "solver_lmbda_c_tilde_settings", "post_processing"]
+    subset_list = ["characterizer", "pre_processing", "problem", "geometry", "material", "fem", "deformation", "solver_u", "solver_u_settings", "solver_bounded_lmbda_c_tilde", "solver_bounded_lmbda_c_tilde_settings", "solver_unbounded_lmbda_c_tilde", "solver_unbounded_lmbda_c_tilde_settings", "solver_bounded_monolithic", "solver_bounded_monolithic_settings", "solver_unbounded_monolithic", "solver_unbounded_monolithic_settings", "post_processing"]
     for subparset in subset_list:
         subparset_is = eval("default_"+subparset+"_parameters()")
         setattr(parameters, subparset, subparset_is)
@@ -228,15 +228,22 @@ def default_fem_parameters():
     
     fem = SimpleNamespace()
 
-    u_degree                = 1
-    lmbda_c_tilde_degree    = 1
-    metadata                = {"quadrature_degree": 4}
-    tensor2vector_indx_dict = {"11": 0, "12": 1, "13": 2, "21": 3, "22": 4, "23": 5, "31": 6, "32": 7, "33": 8}
+    solver_algorithm = "alternate_minimization" # "monolithic"
+    solver_bounded = True # False
 
+    u_degree                = 1
+    scalar_prmtr_degree     = 1
+    metadata                = {"quadrature_degree": 4}
+    three_dim_tensor2vector_indx_dict = {"11": 0, "12": 1, "13": 2, "21": 3, "22": 4, "23": 5, "31": 6, "32": 7, "33": 8}
+    two_dim_tensor2vector_indx_dict = {"11": 0, "12": 1, "21": 2, "22": 3}
+
+    fem.solver_algorithm = solver_algorithm
+    fem.solver_bounded = solver_bounded
     fem.u_degree                = u_degree
-    fem.lmbda_c_tilde_degree    = lmbda_c_tilde_degree
+    fem.scalar_prmtr_degree     = scalar_prmtr_degree
     fem.metadata                = metadata
-    fem.tensor2vector_indx_dict = tensor2vector_indx_dict
+    fem.three_dim_tensor2vector_indx_dict = three_dim_tensor2vector_indx_dict
+    fem.two_dim_tensor2vector_indx_dict = two_dim_tensor2vector_indx_dict
     
     return fem
 
@@ -283,9 +290,13 @@ def default_deformation_parameters():
     # timing parameters
     t_min = 0.  # sec
     t_max = 15. # sec
+    t_step = 0.1 # sec
+    t_step_chunk_num = 1
 
     deformation.t_min = t_min
     deformation.t_max = t_max
+    deformation.t_step = t_step
+    deformation.t_step_chunk_num = t_step_chunk_num
 
     return deformation
 
@@ -327,21 +338,21 @@ def default_solver_u_settings_parameters():
 
     return solver_u_settings
 
-def default_solver_lmbda_c_tilde_parameters():
+def default_solver_bounded_lmbda_c_tilde_parameters():
     
-    solver_lmbda_c_tilde = SimpleNamespace()
+    solver_bounded_lmbda_c_tilde = SimpleNamespace()
 
     nonlinear_solver = "snes"
     symmetric        = True
 
-    solver_lmbda_c_tilde.nonlinear_solver = nonlinear_solver
-    solver_lmbda_c_tilde.symmetric        = symmetric
+    solver_bounded_lmbda_c_tilde.nonlinear_solver = nonlinear_solver
+    solver_bounded_lmbda_c_tilde.symmetric        = symmetric
 
-    return solver_lmbda_c_tilde
+    return solver_bounded_lmbda_c_tilde
 
-def default_solver_lmbda_c_tilde_settings_parameters():
+def default_solver_bounded_lmbda_c_tilde_settings_parameters():
     
-    solver_lmbda_c_tilde_settings = SimpleNamespace()
+    solver_bounded_lmbda_c_tilde_settings = SimpleNamespace()
 
     linear_solver           = "umfpack"
     method                  = "vinewtonssls"
@@ -353,17 +364,131 @@ def default_solver_lmbda_c_tilde_settings_parameters():
     report                  = True
     error_on_nonconvergence = False
 
-    solver_lmbda_c_tilde_settings.linear_solver           = linear_solver
-    solver_lmbda_c_tilde_settings.method                  = method
-    solver_lmbda_c_tilde_settings.line_search             = line_search
-    solver_lmbda_c_tilde_settings.maximum_iterations      = maximum_iterations
-    solver_lmbda_c_tilde_settings.absolute_tolerance      = absolute_tolerance
-    solver_lmbda_c_tilde_settings.relative_tolerance      = relative_tolerance
-    solver_lmbda_c_tilde_settings.solution_tolerance      = solution_tolerance
-    solver_lmbda_c_tilde_settings.report                  = report
-    solver_lmbda_c_tilde_settings.error_on_nonconvergence = error_on_nonconvergence
+    solver_bounded_lmbda_c_tilde_settings.linear_solver           = linear_solver
+    solver_bounded_lmbda_c_tilde_settings.method                  = method
+    solver_bounded_lmbda_c_tilde_settings.line_search             = line_search
+    solver_bounded_lmbda_c_tilde_settings.maximum_iterations      = maximum_iterations
+    solver_bounded_lmbda_c_tilde_settings.absolute_tolerance      = absolute_tolerance
+    solver_bounded_lmbda_c_tilde_settings.relative_tolerance      = relative_tolerance
+    solver_bounded_lmbda_c_tilde_settings.solution_tolerance      = solution_tolerance
+    solver_bounded_lmbda_c_tilde_settings.report                  = report
+    solver_bounded_lmbda_c_tilde_settings.error_on_nonconvergence = error_on_nonconvergence
 
-    return solver_lmbda_c_tilde_settings
+    return solver_bounded_lmbda_c_tilde_settings
+
+def default_solver_unbounded_lmbda_c_tilde_parameters():
+    
+    solver_lmbda_c_tilde = SimpleNamespace()
+
+    nonlinear_solver = "snes"
+
+    solver_lmbda_c_tilde.nonlinear_solver = nonlinear_solver
+
+    return solver_lmbda_c_tilde
+
+def default_solver_unbounded_lmbda_c_tilde_settings_parameters():
+    
+    solver_unbounded_lmbda_c_tilde_settings = SimpleNamespace()
+
+    linear_solver           = "mumps"
+    method                  = "newtontr"
+    line_search             = "cp"
+    preconditioner          = "hypre_amg"
+    maximum_iterations      = 200
+    absolute_tolerance      = 1e-8
+    relative_tolerance      = 1e-7
+    solution_tolerance      = 1e-7
+    report                  = True
+    error_on_nonconvergence = False
+
+    solver_unbounded_lmbda_c_tilde_settings.linear_solver           = linear_solver
+    solver_unbounded_lmbda_c_tilde_settings.method                  = method
+    solver_unbounded_lmbda_c_tilde_settings.line_search             = line_search
+    solver_unbounded_lmbda_c_tilde_settings.preconditioner          = preconditioner
+    solver_unbounded_lmbda_c_tilde_settings.maximum_iterations      = maximum_iterations
+    solver_unbounded_lmbda_c_tilde_settings.absolute_tolerance      = absolute_tolerance
+    solver_unbounded_lmbda_c_tilde_settings.relative_tolerance      = relative_tolerance
+    solver_unbounded_lmbda_c_tilde_settings.solution_tolerance      = solution_tolerance
+    solver_unbounded_lmbda_c_tilde_settings.report                  = report
+    solver_unbounded_lmbda_c_tilde_settings.error_on_nonconvergence = error_on_nonconvergence
+
+    return solver_unbounded_lmbda_c_tilde_settings
+
+def default_solver_bounded_monolithic_parameters():
+    
+    solver_bounded_monolithic = SimpleNamespace()
+
+    nonlinear_solver = "snes"
+    symmetric        = True
+
+    solver_bounded_monolithic.nonlinear_solver = nonlinear_solver
+    solver_bounded_monolithic.symmetric = symmetric
+
+    return solver_bounded_monolithic
+
+def default_solver_bounded_monolithic_settings_parameters():
+    
+    solver_bounded_monolithic_settings = SimpleNamespace()
+
+    linear_solver           = "umfpack"
+    method                  = "vinewtonssls"
+    line_search             = "basic"
+    maximum_iterations      = 50
+    absolute_tolerance      = 1e-8
+    relative_tolerance      = 1e-5
+    solution_tolerance      = 1e-5
+    report                  = True
+    error_on_nonconvergence = False
+
+    solver_bounded_monolithic_settings.linear_solver           = linear_solver
+    solver_bounded_monolithic_settings.method                  = method
+    solver_bounded_monolithic_settings.line_search             = line_search
+    solver_bounded_monolithic_settings.maximum_iterations      = maximum_iterations
+    solver_bounded_monolithic_settings.absolute_tolerance      = absolute_tolerance
+    solver_bounded_monolithic_settings.relative_tolerance      = relative_tolerance
+    solver_bounded_monolithic_settings.solution_tolerance      = solution_tolerance
+    solver_bounded_monolithic_settings.report                  = report
+    solver_bounded_monolithic_settings.error_on_nonconvergence = error_on_nonconvergence
+
+    return solver_bounded_monolithic_settings
+
+def default_solver_unbounded_monolithic_parameters():
+    
+    solver_unbounded_monolithic = SimpleNamespace()
+
+    nonlinear_solver = "snes"
+
+    solver_unbounded_monolithic.nonlinear_solver = nonlinear_solver
+
+    return solver_unbounded_monolithic
+
+def default_solver_unbounded_monolithic_settings_parameters():
+    
+    solver_unbounded_monolithic_settings = SimpleNamespace()
+
+    linear_solver           = "mumps"
+    method                  = "newtontr"
+    line_search             = "cp"
+    preconditioner          = "hypre_amg"
+    maximum_iterations      = 200
+    absolute_tolerance      = 1e-8
+    relative_tolerance      = 1e-7
+    solution_tolerance      = 1e-7
+    report                  = True
+    error_on_nonconvergence = False
+
+    solver_unbounded_monolithic_settings.linear_solver           = linear_solver
+    solver_unbounded_monolithic_settings.method                  = method
+    solver_unbounded_monolithic_settings.line_search             = line_search
+    solver_unbounded_monolithic_settings.preconditioner          = preconditioner
+    solver_unbounded_monolithic_settings.maximum_iterations      = maximum_iterations
+    solver_unbounded_monolithic_settings.absolute_tolerance      = absolute_tolerance
+    solver_unbounded_monolithic_settings.relative_tolerance      = relative_tolerance
+    solver_unbounded_monolithic_settings.solution_tolerance      = solution_tolerance
+    solver_unbounded_monolithic_settings.report                  = report
+    solver_unbounded_monolithic_settings.error_on_nonconvergence = error_on_nonconvergence
+
+    return solver_unbounded_monolithic_settings
 
 def default_post_processing_parameters():
     
@@ -388,6 +513,12 @@ def default_post_processing_parameters():
     save_lmbda_c_eq_tilde_chunks              = False
     save_lmbda_nu_tilde_mesh                  = False
     save_lmbda_nu_tilde_chunks                = False
+    save_lmbda_c_tilde_max                    = True
+    save_lmbda_c_tilde_max_chunks             = True
+    save_lmbda_c_eq_tilde_max_mesh            = False
+    save_lmbda_c_eq_tilde_max_chunks          = False
+    save_lmbda_nu_tilde_max_mesh              = False
+    save_lmbda_nu_tilde_max_chunks            = False
     save_upsilon_c_mesh                       = False
     save_upsilon_c_chunks                     = False
     save_Upsilon_c_mesh                       = True
@@ -430,6 +561,12 @@ def default_post_processing_parameters():
     post_processing.save_lmbda_c_eq_tilde_chunks              = save_lmbda_c_eq_tilde_chunks
     post_processing.save_lmbda_nu_tilde_mesh                  = save_lmbda_nu_tilde_mesh
     post_processing.save_lmbda_nu_tilde_chunks                = save_lmbda_nu_tilde_chunks
+    post_processing.save_lmbda_c_tilde_max                    = save_lmbda_c_tilde_max
+    post_processing.save_lmbda_c_tilde_max_chunks             = save_lmbda_c_tilde_max_chunks
+    post_processing.save_lmbda_c_eq_tilde_max_mesh            = save_lmbda_c_eq_tilde_max_mesh
+    post_processing.save_lmbda_c_eq_tilde_max_chunks          = save_lmbda_c_eq_tilde_max_chunks
+    post_processing.save_lmbda_nu_tilde_max_mesh              = save_lmbda_nu_tilde_max_mesh
+    post_processing.save_lmbda_nu_tilde_max_chunks            = save_lmbda_nu_tilde_max_chunks
     post_processing.save_upsilon_c_mesh                       = save_upsilon_c_mesh
     post_processing.save_upsilon_c_chunks                     = save_upsilon_c_chunks
     post_processing.save_Upsilon_c_mesh                       = save_Upsilon_c_mesh

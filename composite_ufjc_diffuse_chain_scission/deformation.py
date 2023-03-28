@@ -5,6 +5,8 @@ import pathlib
 import sys
 from types import SimpleNamespace
 
+cond_val = 1e-8
+
 class AppliedDeformation(object):
 
     def __init__(self, parameters, F_func, initialize_lmbda, store_initialized_lmbda_, calculate_lmbda_func, store_calculated_lmbda, store_calculated_lmbda_chunk_post_processing, calculate_u_func, save2deformation):
@@ -31,24 +33,8 @@ class AppliedDeformation(object):
         """
         deformation = SimpleNamespace()
 
-        # Deformation stepping calculations
-        t_temp       = np.linspace(self.dp.t_min, self.dp.t_max, int(1e5)) # sec
-        max_F_dot    = np.max(np.abs(np.diff(self.F_func(t_temp))/np.diff(t_temp))) # 1/sec
-        t_scale      = 1./max_F_dot # sec
-        t_step       = np.around(self.dp.t_step_modify_factor*t_scale, 2) # sec
-        t_step_chunk = self.dp.t_step_chunk_modify_factor*t_step # sec
-
-        self.dp.t_scale      = t_scale
-        self.dp.t_step       = t_step
-        self.dp.t_step_chunk = t_step_chunk
-
         if self.dp.t_step > self.dp.t_max:
             sys.exit('Error: The time step is larger than the total deformation time! Adjust the value of t_step_modify_factor to correct for this.')
-
-        # determine the time step chunk: the number of time steps required to pass between data-saving instances in the applied deformation history
-        t_step_chunk_num = int(np.around(self.dp.t_step_chunk/self.dp.t_step))
-        if t_step_chunk_num < 1:
-            t_step_chunk_num = 1
 
         # initialize the chunk counter and associated constants/lists
         chunk_counter  = 0
@@ -74,7 +60,7 @@ class AppliedDeformation(object):
         # advance to the first time step
         t_val += self.dp.t_step
 
-        while t_val <= self.dp.t_max:
+        while t_val <= (self.dp.t_max+cond_val):
             # Calculate displacement at a particular time step
             lmbda_val = self.calculate_lmbda_func(t_val)
 
@@ -82,7 +68,7 @@ class AppliedDeformation(object):
             t.append(t_val)
             lmbda = self.store_calculated_lmbda(lmbda, lmbda_val)
 
-            if chunk_counter == t_step_chunk_num:
+            if chunk_counter == self.dp.t_step_chunk_num:
                 # Append to appropriate lists
                 t_chunks.append(t_val)
                 chunk_indx.append(chunk_indx_val)
@@ -100,7 +86,7 @@ class AppliedDeformation(object):
 
         # If the endpoint of the chunked applied deformation is not equal to the true endpoint of the applied deformation, then give the user the option to kill the simulation, or proceed on
         if chunk_indx[-1] != len(t)-1:
-            terminal_statement = input('The endpoint of the chunked applied deformation is not equal to the endpoint of the actual applied deformation. Do you wish to kill the simulation here, or proceed on? (yes or no) ')
+            terminal_statement = input('The endpoint of the chunked applied deformation is not equal to the endpoint of the actual applied deformation. Do you wish to kill the simulation here? If no, the simulation will proceed on. ')
             if terminal_statement.lower() == 'yes':
                 sys.exit()
             else: pass

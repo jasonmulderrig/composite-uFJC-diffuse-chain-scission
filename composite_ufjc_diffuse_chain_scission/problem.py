@@ -48,6 +48,8 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         # Mesh
         self.fem.mesh      = self.define_mesh()
         self.fem.dimension = self.fem.mesh.geometry().dim() # spatial dimensions of the mesh
+        self.fem.solver_algorithm = self.parameters.fem.solver_algorithm
+        self.fem.solver_bounded = self.parameters.fem.solver_bounded
 
         # MeshFunctions and Measures for different blocks and boundaries; may not need this functionality
         self.set_mesh_functions()
@@ -59,10 +61,14 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         # Variational formulation
         self.set_variational_formulation()
 
-        # Set Dirichlet boundary conditions for displacement
-        self.fem.bc_u = self.define_bc_u()
-        # Set Dirichlet boundary conditions for non-local chain stretch
-        self.fem.bc_lmbda_c_tilde = self.define_bc_lmbda_c_tilde()
+        if self.fem.solver_algorithm == "alternate_minimization":
+            # Set Dirichlet boundary conditions for displacement
+            self.fem.bc_u = self.define_bc_u()
+            # Set Dirichlet boundary conditions for non-local chain stretch
+            self.fem.bc_lmbda_c_tilde = self.define_bc_lmbda_c_tilde()
+        elif self.fem.solver_algorithm == "monolithic":
+            # Set boundary conditions for the monolithic solver
+            self.fem.bc_monolithic = self.define_bc_monolithic()
 
         # Deformation
         self.deformation = AppliedDeformation(self.parameters, self.F_func, self.initialize_lmbda, self.store_initialized_lmbda, self.calculate_lmbda_func, self.store_calculated_lmbda, self.store_calculated_lmbda_chunk_post_processing, self.calculate_u_func, self.save2deformation)
@@ -74,18 +80,57 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         self.file_results.parameters["flush_output"]          = ppp.flush_output
         self.file_results.parameters["functions_share_mesh"]  = ppp.functions_share_mesh
 
-        self.fem.dict_solver_u_parameters = self.define_dict_solver_u_parameters()
-        self.fem.dict_solver_lmbda_c_tilde_parameters = self.define_dict_solver_lmbda_c_tilde_parameters()
+        if self.fem.solver_algorithm == "alternate_minimization":
+            self.fem.dict_solver_u_parameters = self.define_dict_solver_u_parameters()
+            if self.fem.solver_bounded is True:
+                self.fem.dict_solver_bounded_lmbda_c_tilde_parameters = self.define_dict_solver_bounded_lmbda_c_tilde_parameters()
+            else:
+                self.fem.dict_solver_unbounded_lmbda_c_tilde_parameters = self.define_dict_solver_unbounded_lmbda_c_tilde_parameters()
+        elif self.fem.solver_algorithm == "monolithic":
+            if self.fem.solver_bounded is True:
+                self.fem.dict_solver_bounded_monolithic_parameters = self.define_dict_solver_bounded_monolithic_parameters()
+            else:
+                self.fem.dict_solver_unbounded_monolithic_parameters = self.define_dict_solver_unbounded_monolithic_parameters()
+    
+    def define_dict_solver_unbounded_monolithic_parameters(self):
+        dict_solver_unbounded_monolithic_parameters = vars(self.parameters.solver_unbounded_monolithic)
+        dict_solver_unbounded_monolithic_settings   = vars(self.parameters.solver_unbounded_monolithic_settings)
 
-    def define_dict_solver_lmbda_c_tilde_parameters(self):
-        dict_solver_lmbda_c_tilde_parameters = vars(self.parameters.solver_lmbda_c_tilde)
-        dict_solver_lmbda_c_tilde_settings   = vars(self.parameters.solver_lmbda_c_tilde_settings)
+        nonlinear_solver_type = self.parameters.solver_unbounded_monolithic.nonlinear_solver + "_solver"
 
-        nonlinear_solver_type = self.parameters.solver_lmbda_c_tilde.nonlinear_solver + "_solver"
+        dict_solver_unbounded_monolithic_parameters[nonlinear_solver_type] = dict_solver_unbounded_monolithic_settings
 
-        dict_solver_lmbda_c_tilde_parameters[nonlinear_solver_type] = dict_solver_lmbda_c_tilde_settings
+        return dict_solver_unbounded_monolithic_parameters
+    
+    def define_dict_solver_bounded_monolithic_parameters(self):
+        dict_solver_bounded_monolithic_parameters = vars(self.parameters.solver_bounded_monolithic)
+        dict_solver_bounded_monolithic_settings   = vars(self.parameters.solver_bounded_monolithic_settings)
 
-        return dict_solver_lmbda_c_tilde_parameters
+        nonlinear_solver_type = self.parameters.solver_bounded_monolithic.nonlinear_solver + "_solver"
+
+        dict_solver_bounded_monolithic_parameters[nonlinear_solver_type] = dict_solver_bounded_monolithic_settings
+
+        return dict_solver_bounded_monolithic_parameters
+
+    def define_dict_solver_bounded_lmbda_c_tilde_parameters(self):
+        dict_solver_bounded_lmbda_c_tilde_parameters = vars(self.parameters.solver_bounded_lmbda_c_tilde)
+        dict_solver_bounded_lmbda_c_tilde_settings   = vars(self.parameters.solver_bounded_lmbda_c_tilde_settings)
+
+        nonlinear_solver_type = self.parameters.solver_bounded_lmbda_c_tilde.nonlinear_solver + "_solver"
+
+        dict_solver_bounded_lmbda_c_tilde_parameters[nonlinear_solver_type] = dict_solver_bounded_lmbda_c_tilde_settings
+
+        return dict_solver_bounded_lmbda_c_tilde_parameters
+    
+    def define_dict_solver_unbounded_lmbda_c_tilde_parameters(self):
+        dict_solver_unbounded_lmbda_c_tilde_parameters = vars(self.parameters.solver_unbounded_lmbda_c_tilde)
+        dict_solver_unbounded_lmbda_c_tilde_settings   = vars(self.parameters.solver_unbounded_lmbda_c_tilde_settings)
+
+        nonlinear_solver_type = self.parameters.solver_unbounded_lmbda_c_tilde.nonlinear_solver + "_solver"
+
+        dict_solver_unbounded_lmbda_c_tilde_parameters[nonlinear_solver_type] = dict_solver_unbounded_lmbda_c_tilde_settings
+
+        return dict_solver_unbounded_lmbda_c_tilde_parameters
     
     def define_dict_solver_u_parameters(self):
         dict_solver_u_parameters = vars(self.parameters.solver_u)
@@ -151,6 +196,12 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         Define the variational formulation problem to be solved
         """
         self.material.fenics_variational_formulation(self.parameters, self.fem)
+    
+    def define_bc_monolithic(self):
+        """
+        Return a list of boundary conditions
+        """
+        return []
     
     def define_bc_u(self):
         """
