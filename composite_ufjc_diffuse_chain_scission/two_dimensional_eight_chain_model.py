@@ -1104,10 +1104,20 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             sigma_val = project(self.first_pk_stress_ufl_fenics_mesh_func(fem)/fem.J*fem.F.T, fem.V_DG_tensor)
             sigma_val.rename("Normalized Cauchy stress", "sigma_val")
             file_results.write(sigma_val, deformation.t_val)
+
+            sigma_penalty_term_val = project(self.first_pk_stress_penalty_term_ufl_fenics_mesh_func(fem)/fem.J*fem.F.T, fem.V_DG_tensor)
+            sigma_penalty_term_val.rename("Normalized Cauchy stress penalty term", "sigma_penalty_term_val")
+            file_results.write(sigma_penalty_term_val, deformation.t_val)
+
+            sigma_less_penalty_term_val = project((self.first_pk_stress_ufl_fenics_mesh_func(fem)-self.first_pk_stress_penalty_term_ufl_fenics_mesh_func(fem))/fem.J*fem.F.T, fem.V_DG_tensor)
+            sigma_less_penalty_term_val.rename("Normalized Cauchy stress less penalty term", "sigma_less_penalty_term_val")
+            file_results.write(sigma_less_penalty_term_val, deformation.t_val)
         
         if ppp.save_sigma_chunks:
             sigma_val = project(self.first_pk_stress_ufl_fenics_mesh_func(fem)/fem.J*fem.F.T, fem.V_DG_tensor)
-            chunks    = self.weak_form_store_calculated_sigma_chunks(sigma_val, femp.two_dim_tensor2vector_indx_dict, gp.meshpoints, chunks)
+            sigma_penalty_term_val = project(self.first_pk_stress_penalty_term_ufl_fenics_mesh_func(fem)/fem.J*fem.F.T, fem.V_DG_tensor)
+            sigma_less_penalty_term_val = project((self.first_pk_stress_ufl_fenics_mesh_func(fem)-self.first_pk_stress_penalty_term_ufl_fenics_mesh_func(fem))/fem.J*fem.F.T, fem.V_DG_tensor)
+            chunks = self.weak_form_store_calculated_sigma_chunks(sigma_val, sigma_penalty_term_val, sigma_less_penalty_term_val, femp.two_dim_tensor2vector_indx_dict, gp.meshpoints, chunks)
         
         # F
         if ppp.save_F_mesh:
@@ -1121,6 +1131,26 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         
         return chunks
     
+    def xi_c_ufl_cohen_approximant_func(self, lmbda_nu_val, lmbda_c_eq_val):
+        lmbda_comp_nu = lmbda_c_eq_val - lmbda_nu_val + 1.
+        nmrtr =  lmbda_comp_nu * (3-lmbda_comp_nu**2)
+        dnmntr = 1 - lmbda_comp_nu**2
+        dnmntr = conditional(ge(dnmntr, DOLFIN_EPS), dnmntr, DOLFIN_EPS)
+        return nmrtr / dnmntr
+    
+    def xi_c_ufl_kroger_7_2_approximant_func(self, lmbda_nu_val, lmbda_c_eq_val):
+        lmbda_comp_nu = lmbda_c_eq_val - lmbda_nu_val + 1.
+        nmrtr =  lmbda_comp_nu * (3*lmbda_comp_nu-lmbda_comp_nu/5*(6*lmbda_comp_nu**2+lmbda_comp_nu**4-2*lmbda_comp_nu**6))
+        dnmntr = 1 - lmbda_comp_nu**2
+        dnmntr = conditional(ge(dnmntr, DOLFIN_EPS), dnmntr, DOLFIN_EPS)
+        return nmrtr / dnmntr
+    
+    def xi_c_ufl_petrosyan_approximant_func(self, lmbda_nu_val, lmbda_c_eq_val):
+        lmbda_comp_nu = lmbda_c_eq_val - lmbda_nu_val + 1.
+        dnmntr = 1 - lmbda_comp_nu
+        dnmntr = conditional(ge(dnmntr, DOLFIN_EPS), dnmntr, DOLFIN_EPS)
+        return 3 * lmbda_comp_nu + lmbda_comp_nu**2*sin(7*lmbda_comp_nu/2)/5 + lmbda_comp_nu**3/dnmntr
+    
     def first_pk_stress_ufl_fenics_mesh_func(self, fem):
         second_pk_stress_val = Constant(0.0)*fem.I
         for nu_indx in range(self.nu_num):
@@ -1131,12 +1161,18 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             lmbda_c_eq___nu_val = fem.lmbda_c*A_nu___nu_val
             lmbda_nu___nu_val   = self.composite_ufjc_ufl_fenics_list[nu_indx].lmbda_nu_ufl_fenics_func(lmbda_c_eq___nu_val)
             xi_c___nu_val       = self.composite_ufjc_ufl_fenics_list[nu_indx].xi_c_ufl_fenics_func(lmbda_nu___nu_val, lmbda_c_eq___nu_val)
+            # xi_c___nu_val       = self.xi_c_ufl_cohen_approximant_func(lmbda_nu___nu_val, lmbda_c_eq___nu_val)
+            # xi_c___nu_val       = self.xi_c_ufl_kroger_7_2_approximant_func(lmbda_nu___nu_val, lmbda_c_eq___nu_val)
+            # xi_c___nu_val       = self.xi_c_ufl_petrosyan_approximant_func(lmbda_nu___nu_val, lmbda_c_eq___nu_val)
             # determine chain damage
             upsilon_c___nu_val = self.upsilon_c_ufl_fenics_mesh_func(nu_indx, fem)
             # determine stress response
             second_pk_stress_val += upsilon_c___nu_val*P_nu___nu_val*nu_val*A_nu___nu_val*xi_c___nu_val/(3.*fem.lmbda_c)*fem.F
         second_pk_stress_val += self.Upsilon_c_ufl_fenics_mesh_func(fem)**2*self.K_G*(fem.J-1)*fem.J*fem.F_inv.T
         return second_pk_stress_val
+    
+    def first_pk_stress_penalty_term_ufl_fenics_mesh_func(self, fem):
+        return self.Upsilon_c_ufl_fenics_mesh_func(fem)**2*self.K_G*(fem.J-1)*fem.J*fem.F_inv.T
     
     def lmbda_c_eq_tilde_ufl_fenics_mesh_func(self, nu_indx, fem):
         A_nu___nu_val       = self.A_nu_list[nu_indx]
@@ -1158,13 +1194,22 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         lmbda_nu_tilde_max___nu_val = self.composite_ufjc_ufl_fenics_list[nu_indx].lmbda_nu_ufl_fenics_func(lmbda_c_eq_tilde_max___nu_val)
         return lmbda_nu_tilde_max___nu_val
     
+    # def upsilon_c_ufl_fenics_mesh_func(self, nu_indx, fem):
+    #     lmbda_nu_tilde_max___nu_val = self.lmbda_nu_tilde_max_ufl_fenics_mesh_func(nu_indx, fem)
+    #     upsilon_c___nu_val      = (1.-self.k_cond_val)*self.composite_ufjc_ufl_fenics_list[nu_indx].p_c_sur_hat_ufl_fenics_func(lmbda_nu_tilde_max___nu_val) + self.k_cond_val
+    #     return upsilon_c___nu_val
+    
+    # def d_c_ufl_fenics_mesh_func(self, nu_indx, fem):
+    #     return 1. - self.upsilon_c_ufl_fenics_mesh_func(nu_indx, fem)
+
     def upsilon_c_ufl_fenics_mesh_func(self, nu_indx, fem):
-        lmbda_nu_tilde_max___nu_val = self.lmbda_nu_tilde_max_ufl_fenics_mesh_func(nu_indx, fem)
-        upsilon_c___nu_val      = (1.-self.k_cond_val)*self.composite_ufjc_ufl_fenics_list[nu_indx].p_c_sur_hat_ufl_fenics_func(lmbda_nu_tilde_max___nu_val) + self.k_cond_val
-        return upsilon_c___nu_val
+        return (1.-self.k_cond_val)*(1.-self.d_c_ufl_fenics_mesh_func(nu_indx, fem))**2 + self.k_cond_val
     
     def d_c_ufl_fenics_mesh_func(self, nu_indx, fem):
-        return 1. - self.upsilon_c_ufl_fenics_mesh_func(nu_indx, fem)
+        tau = 2700
+        lmbda_nu_tilde_max_crit = 1.003
+        lmbda_nu_tilde_max___nu_val = self.lmbda_nu_tilde_max_ufl_fenics_mesh_func(nu_indx, fem)
+        return 1.-sqrt(1.-1./(1.+exp(-tau*(lmbda_nu_tilde_max___nu_val-lmbda_nu_tilde_max_crit))))
     
     def Upsilon_c_ufl_fenics_mesh_func(self, fem):
         Upsilon_c_val = Constant(0.0)

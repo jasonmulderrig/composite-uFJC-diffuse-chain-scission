@@ -54,11 +54,13 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         p.geometry.meshpoints_color_list = ['black']
         p.geometry.meshpoints_name_list  = ['notch_surface_point']
 
+        p.geometry.meshtype = "notched_crack" # "notch_on_edgeface"
+
         p.material.l_nl = self.l_nl
 
         # Define a rather brittle material for debugging purposes
-        p.material.zeta_nu_char = 50
-        p.material.kappa_nu     = 7500
+        p.material.zeta_nu_char = 298.9 # 537.6 # 298.9 # 100 # 50
+        p.material.kappa_nu     = 912.2 # 3197.5 # 912.2 # 2300 # 7500
 
         p.material.macro2micro_deformation_assumption = "nonaffine"
 
@@ -100,13 +102,13 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         p.fem.solver_bounded = False # True
 
         # General network deformation parameters
-        k_cond_val = 0.01
+        k_cond_val = 1e-4 # 0.01
         K_G = 10
 
         # Parameters used in F_func
-        strain_rate = 0.2 # 0.2 # 1/sec
-        t_max       = 18 # 100 # sec
-        t_step      = 0.02 # sec
+        strain_rate = 0.1 # 0.2 # 1/sec
+        t_max       = 30 # 13.6 # 13.5 # 16 # 100 # sec
+        t_step      = 0.02 # 0.01 # 0.02 # sec
         t_step_chunk_num = 10
 
         p.deformation.k_cond_val       = k_cond_val
@@ -131,8 +133,8 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
     
     def prefix(self):
         mp = self.parameters.material
-        mesh_type = "notched_crack"
-        return mp.physical_dimensionality+"_"+mp.two_dimensional_formulation+"_"+mp.incompressibility_assumption+"_"+mp.macro2micro_deformation_assumption+"_"+mp.micro2macro_homogenization_scheme+"_"+mp.chain_level_load_sharing+"_"+mp.rate_dependence+"_"+mesh_type
+        gp = self.parameters.geometry
+        return mp.physical_dimensionality+"_"+mp.two_dimensional_formulation+"_"+mp.incompressibility_assumption+"_"+mp.macro2micro_deformation_assumption+"_"+mp.micro2macro_homogenization_scheme+"_"+mp.chain_level_load_sharing+"_"+mp.rate_dependence+"_"+gp.meshtype
     
     def define_mesh(self):
         """
@@ -190,39 +192,6 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
 
         # return gmsh_mesher(geofile, self.prefix(), mesh_name)
         
-        # geofile = \
-        #     """
-        #     Mesh.Algorithm = 8;
-        #     coarse_mesh_elem_size = DefineNumber[ %g, Name "Parameters/coarse_mesh_elem_size" ];
-        #     x_notch_point = DefineNumber[ %g, Name "Parameters/x_notch_point" ];
-        #     r_notch = DefineNumber[ %g, Name "Parameters/r_notch" ];
-        #     L = DefineNumber[ %g, Name "Parameters/L"];
-        #     H = DefineNumber[ %g, Name "Parameters/H"];
-        #     Point(1) = {0, 0, 0, coarse_mesh_elem_size};
-        #     Point(2) = {x_notch_point-r_notch, 0, 0, coarse_mesh_elem_size};
-        #     Point(3) = {0, -r_notch, 0, coarse_mesh_elem_size};
-        #     Point(4) = {0, -H/2, 0, coarse_mesh_elem_size};
-        #     Point(5) = {L, -H/2, 0, coarse_mesh_elem_size};
-        #     Point(6) = {L, H/2, 0, coarse_mesh_elem_size};
-        #     Point(7) = {0, H/2, 0, coarse_mesh_elem_size};
-        #     Point(8) = {0, r_notch, 0, coarse_mesh_elem_size};
-        #     Point(9) = {x_notch_point-r_notch, r_notch, 0, coarse_mesh_elem_size};
-        #     Point(10) = {x_notch_point, 0, 0, coarse_mesh_elem_size};
-        #     Point(11) = {x_notch_point-r_notch, -r_notch, 0, coarse_mesh_elem_size};
-        #     Line(1) = {11, 3};
-        #     Line(2) = {3, 4};
-        #     Line(3) = {4, 5};
-        #     Line(4) = {5, 6};
-        #     Line(5) = {6, 7};
-        #     Line(6) = {7, 8};
-        #     Line(7) = {8, 9};
-        #     Circle(8) = {9, 2, 10};
-        #     Circle(9) = {10, 2, 11};
-        #     Curve Loop(21) = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-        #     Plane Surface(31) = {21};
-        #     Mesh.MshFileVersion = 2.0;
-        #     """ % (self.coarse_mesh_elem_size, self.x_notch_point, self.r_notch, self.L, self.H)
-
         geofile = \
             """
             Mesh.Algorithm = 8;
@@ -232,24 +201,57 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             L = DefineNumber[ %g, Name "Parameters/L"];
             H = DefineNumber[ %g, Name "Parameters/H"];
             Point(1) = {0, 0, 0, coarse_mesh_elem_size};
-            Point(2) = {0, -r_notch, 0, coarse_mesh_elem_size};
-            Point(3) = {0, -H/2, 0, coarse_mesh_elem_size};
-            Point(4) = {L, -H/2, 0, coarse_mesh_elem_size};
-            Point(5) = {L, H/2, 0, coarse_mesh_elem_size};
-            Point(6) = {0, H/2, 0, coarse_mesh_elem_size};
-            Point(7) = {0, r_notch, 0, coarse_mesh_elem_size};
-            Point(8) = {r_notch, 0, 0, coarse_mesh_elem_size};
-            Line(1) = {2, 3};
+            Point(2) = {x_notch_point-r_notch, 0, 0, coarse_mesh_elem_size};
+            Point(3) = {0, -r_notch, 0, coarse_mesh_elem_size};
+            Point(4) = {0, -H/2, 0, coarse_mesh_elem_size};
+            Point(5) = {L, -H/2, 0, coarse_mesh_elem_size};
+            Point(6) = {L, H/2, 0, coarse_mesh_elem_size};
+            Point(7) = {0, H/2, 0, coarse_mesh_elem_size};
+            Point(8) = {0, r_notch, 0, coarse_mesh_elem_size};
+            Point(9) = {x_notch_point-r_notch, r_notch, 0, coarse_mesh_elem_size};
+            Point(10) = {x_notch_point, 0, 0, coarse_mesh_elem_size};
+            Point(11) = {x_notch_point-r_notch, -r_notch, 0, coarse_mesh_elem_size};
+            Line(1) = {11, 3};
             Line(2) = {3, 4};
             Line(3) = {4, 5};
             Line(4) = {5, 6};
             Line(5) = {6, 7};
-            Circle(6) = {7, 1, 8};
-            Circle(7) = {8, 1, 2};
-            Curve Loop(21) = {1, 2, 3, 4, 5, 6, 7};
+            Line(6) = {7, 8};
+            Line(7) = {8, 9};
+            Circle(8) = {9, 2, 10};
+            Circle(9) = {10, 2, 11};
+            Curve Loop(21) = {1, 2, 3, 4, 5, 6, 7, 8, 9};
             Plane Surface(31) = {21};
             Mesh.MshFileVersion = 2.0;
             """ % (self.coarse_mesh_elem_size, self.x_notch_point, self.r_notch, self.L, self.H)
+
+        # geofile = \
+        #     """
+        #     Mesh.Algorithm = 8;
+        #     coarse_mesh_elem_size = DefineNumber[ %g, Name "Parameters/coarse_mesh_elem_size" ];
+        #     x_notch_point = DefineNumber[ %g, Name "Parameters/x_notch_point" ];
+        #     r_notch = DefineNumber[ %g, Name "Parameters/r_notch" ];
+        #     L = DefineNumber[ %g, Name "Parameters/L"];
+        #     H = DefineNumber[ %g, Name "Parameters/H"];
+        #     Point(1) = {0, 0, 0, coarse_mesh_elem_size};
+        #     Point(2) = {0, -r_notch, 0, coarse_mesh_elem_size};
+        #     Point(3) = {0, -H/2, 0, coarse_mesh_elem_size};
+        #     Point(4) = {L, -H/2, 0, coarse_mesh_elem_size};
+        #     Point(5) = {L, H/2, 0, coarse_mesh_elem_size};
+        #     Point(6) = {0, H/2, 0, coarse_mesh_elem_size};
+        #     Point(7) = {0, r_notch, 0, coarse_mesh_elem_size};
+        #     Point(8) = {r_notch, 0, 0, coarse_mesh_elem_size};
+        #     Line(1) = {2, 3};
+        #     Line(2) = {3, 4};
+        #     Line(3) = {4, 5};
+        #     Line(4) = {5, 6};
+        #     Line(5) = {6, 7};
+        #     Circle(6) = {7, 1, 8};
+        #     Circle(7) = {8, 1, 2};
+        #     Curve Loop(21) = {1, 2, 3, 4, 5, 6, 7};
+        #     Plane Surface(31) = {21};
+        #     Mesh.MshFileVersion = 2.0;
+        #     """ % (self.coarse_mesh_elem_size, self.x_notch_point, self.r_notch, self.L, self.H)
 
         geofile = textwrap.dedent(geofile)
 
@@ -259,8 +261,9 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         r_notch_string     = "{:.1f}".format(self.r_notch)
         coarse_mesh_elem_size_string  = "{:.1f}".format(self.coarse_mesh_elem_size)
 
-        mesh_type = "two_dimensional_plane_strain_notched_crack"
-        mesh_name = mesh_type+"_"+L_string+"_"+H_string+"_"+x_notch_point_string+"_"+r_notch_string+"_"+coarse_mesh_elem_size_string
+        mp = self.parameters.material
+        gp = self.parameters.geometry
+        mesh_name = mp.physical_dimensionality+"_"+mp.two_dimensional_formulation+"_"+gp.meshtype+"_"+L_string+"_"+H_string+"_"+x_notch_point_string+"_"+r_notch_string+"_"+coarse_mesh_elem_size_string
 
         return gmsh_mesher(geofile, self.prefix(), mesh_name)
     
@@ -370,13 +373,21 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         chunks.F_22_chunks_val     = [0. for meshpoint_indx in range(len(meshpoints))]
         chunks.sigma_22_chunks     = []
         chunks.sigma_22_chunks_val = [0. for meshpoint_indx in range(len(meshpoints))]
+        chunks.sigma_22_penalty_term_chunks     = []
+        chunks.sigma_22_penalty_term_chunks_val = [0. for meshpoint_indx in range(len(meshpoints))]
+        chunks.sigma_22_less_penalty_term_chunks     = []
+        chunks.sigma_22_less_penalty_term_chunks_val = [0. for meshpoint_indx in range(len(meshpoints))]
 
         return chunks
     
-    def weak_form_store_calculated_sigma_chunks(self, sigma_val, two_dim_tensor2vector_indx_dict, meshpoints, chunks):
+    def weak_form_store_calculated_sigma_chunks(self, sigma_val, sigma_penalty_term_val, sigma_less_penalty_term_val, two_dim_tensor2vector_indx_dict, meshpoints, chunks):
         for meshpoint_indx in range(len(meshpoints)):
             chunks.sigma_22_chunks_val[meshpoint_indx] = sigma_val(meshpoints[meshpoint_indx])[two_dim_tensor2vector_indx_dict["22"]]
+            chunks.sigma_22_penalty_term_chunks_val[meshpoint_indx] = sigma_penalty_term_val(meshpoints[meshpoint_indx])[two_dim_tensor2vector_indx_dict["22"]]
+            chunks.sigma_22_less_penalty_term_chunks_val[meshpoint_indx] = sigma_less_penalty_term_val(meshpoints[meshpoint_indx])[two_dim_tensor2vector_indx_dict["22"]]
         chunks.sigma_22_chunks.append(deepcopy(chunks.sigma_22_chunks_val))
+        chunks.sigma_22_penalty_term_chunks.append(deepcopy(chunks.sigma_22_penalty_term_chunks_val))
+        chunks.sigma_22_less_penalty_term_chunks.append(deepcopy(chunks.sigma_22_less_penalty_term_chunks_val))
 
         return chunks
     
@@ -438,12 +449,18 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
 
         self.fem.u_y_expression = Expression("u_y", u_y=0., degree=0)
 
-        bc_I   = DirichletBC(self.fem.V.sub(0).sub(0), Constant(0.), BottomBoundary())
-        bc_II  = DirichletBC(self.fem.V.sub(0).sub(1), Constant(0.), BottomBoundary())
-        bc_III = DirichletBC(self.fem.V.sub(0).sub(0), Constant(0.), TopBoundary())
-        bc_IV  = DirichletBC(self.fem.V.sub(0).sub(1), self.fem.u_y_expression, TopBoundary())
+        bc_I = DirichletBC(self.fem.V.sub(0).sub(1), Constant(0.), BottomBoundary())
+        bc_II = DirichletBC(self.fem.V.sub(0).sub(0), Constant(0.), RightBoundary())
+        bc_III  = DirichletBC(self.fem.V.sub(0).sub(1), self.fem.u_y_expression, TopBoundary())
 
-        return [bc_I, bc_II, bc_III, bc_IV]
+        return [bc_I, bc_II, bc_III]
+
+        # bc_I   = DirichletBC(self.fem.V.sub(0).sub(0), Constant(0.), BottomBoundary())
+        # bc_II  = DirichletBC(self.fem.V.sub(0).sub(1), Constant(0.), BottomBoundary())
+        # bc_III = DirichletBC(self.fem.V.sub(0).sub(0), Constant(0.), TopBoundary())
+        # bc_IV  = DirichletBC(self.fem.V.sub(0).sub(1), self.fem.u_y_expression, TopBoundary())
+
+        # return [bc_I, bc_II, bc_III, bc_IV]
     
         # pinned_support_expression = Expression(["0.0", "0.0"], degree=0)
         # self.fem.u_y_expression = Expression(["0.0", "u_y"], u_y=0., degree=0)
@@ -496,12 +513,18 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
 
         self.fem.u_y_expression = Expression("u_y", u_y=0., degree=0)
 
-        bc_I   = DirichletBC(self.fem.V_u.sub(0), Constant(0.), BottomBoundary())
-        bc_II  = DirichletBC(self.fem.V_u.sub(1), Constant(0.), BottomBoundary())
-        bc_III = DirichletBC(self.fem.V_u.sub(0), Constant(0.), TopBoundary())
-        bc_IV  = DirichletBC(self.fem.V_u.sub(1), self.fem.u_y_expression, TopBoundary())
+        bc_I = DirichletBC(self.fem.V_u.sub(1), Constant(0.), BottomBoundary())
+        bc_II = DirichletBC(self.fem.V_u.sub(0), Constant(0.), RightBoundary())
+        bc_III  = DirichletBC(self.fem.V_u.sub(1), self.fem.u_y_expression, TopBoundary())
 
-        return [bc_I, bc_II, bc_III, bc_IV]
+        return [bc_I, bc_II, bc_III]
+
+        # bc_I   = DirichletBC(self.fem.V_u.sub(0), Constant(0.), BottomBoundary())
+        # bc_II  = DirichletBC(self.fem.V_u.sub(1), Constant(0.), BottomBoundary())
+        # bc_III = DirichletBC(self.fem.V_u.sub(0), Constant(0.), TopBoundary())
+        # bc_IV  = DirichletBC(self.fem.V_u.sub(1), self.fem.u_y_expression, TopBoundary())
+
+        # return [bc_I, bc_II, bc_III, bc_IV]
 
     def set_loading(self):
         """
@@ -968,6 +991,38 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             plt.grid(True, alpha=0.25)
             save_current_figure(self.savedir, r'$u_2$', 30, r'$\sigma_{22}$', 30, "fenics-weak-form-uniaxial-rate-independent-u_2-vs-sigma_22")
 
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                sigma_22_penalty_term___meshpoint_chunk = [sigma_22_penalty_term_chunk[meshpoint_indx] for sigma_22_penalty_term_chunk in weak_form_chunks.sigma_22_penalty_term_chunks]
+                plt.plot(deformation.t_chunks, sigma_22_penalty_term___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$t$', 30, r'$(\sigma_{22})_{penalty}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-sigma_22_penalty_term")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                sigma_22_penalty_term___meshpoint_chunk = [sigma_22_penalty_term_chunk[meshpoint_indx] for sigma_22_penalty_term_chunk in weak_form_chunks.sigma_22_penalty_term_chunks]
+                plt.plot(deformation.u_2_chunks, sigma_22_penalty_term___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$u_2$', 30, r'$(\sigma_{22})_{penalty}$', 30, "fenics-weak-form-uniaxial-rate-independent-u_2-vs-sigma_22_penalty_term")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                sigma_22_less_penalty_term___meshpoint_chunk = [sigma_22_less_penalty_term_chunk[meshpoint_indx] for sigma_22_less_penalty_term_chunk in weak_form_chunks.sigma_22_less_penalty_term_chunks]
+                plt.plot(deformation.t_chunks, sigma_22_less_penalty_term___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$t$', 30, r'$\sigma_{22} - (\sigma_{22})_{penalty}$', 30, "fenics-weak-form-uniaxial-rate-independent-t-vs-sigma_22_less_penalty_term")
+
+            fig = plt.figure()
+            for meshpoint_indx in range(len(gp.meshpoints)):
+                sigma_22_less_penalty_term___meshpoint_chunk = [sigma_22_less_penalty_term_chunk[meshpoint_indx] for sigma_22_less_penalty_term_chunk in weak_form_chunks.sigma_22_less_penalty_term_chunks]
+                plt.plot(deformation.u_2_chunks, sigma_22_less_penalty_term___meshpoint_chunk, linestyle='-', color=gp.meshpoints_color_list[meshpoint_indx], alpha=1, linewidth=2.5, label=gp.meshpoints_label_list[meshpoint_indx])
+            plt.legend(loc='best')
+            plt.grid(True, alpha=0.25)
+            save_current_figure(self.savedir, r'$u_2$', 30, r'$\sigma_{22} - (\sigma_{22})_{penalty}$', 30, "fenics-weak-form-uniaxial-rate-independent-u_2-vs-sigma_22_less_penalty_term")
+
         # F
         if ppp.save_F_chunks:
             fig = plt.figure()
@@ -989,11 +1044,11 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
 if __name__ == '__main__':
 
     L, H = 1.0, 1.5
-    x_notch_point = 0.05 # 0.5
-    r_notch = 0.05
+    x_notch_point = 0.5
+    r_notch = 0.02
     notch_fine_mesh_layer_level_num = 1
     fine_mesh_elem_size = 0.01
     coarse_mesh_elem_size = 0.01 # 0.01 # 0.25
-    l_nl = 1.25*r_notch # 10*r_notch # 1.25*r_notch
+    l_nl = coarse_mesh_elem_size # 10*r_notch # 1.25*r_notch # 0.02 = 2*coarse_mesh_elem_size
     problem = TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqualStrainRateIndependentNotchedCrack(L, H, x_notch_point, r_notch, notch_fine_mesh_layer_level_num, fine_mesh_elem_size, coarse_mesh_elem_size, l_nl)
     problem.solve_fenics_weak_form_deformation()
