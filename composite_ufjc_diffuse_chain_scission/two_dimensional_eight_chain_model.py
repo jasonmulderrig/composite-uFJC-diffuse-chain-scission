@@ -182,6 +182,12 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
 
         CompositeuFJCNetwork.__init__(self, parameters)
     
+    def print0(self, text):
+        """
+        Print only from process 0 (for parallel run)
+        """
+        if MPI.rank(MPI.comm_world) == 0: print(text)
+    
     def homogeneous_strong_form_initialization(self):
         results = SimpleNamespace()
         chunks  = SimpleNamespace()
@@ -578,7 +584,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         """
         Solve the displacement problem
         """
-        print("Displacement problem")
+        self.print0("Displacement problem")
         (iter, converged) = fem.solver_u.solve()
 
         return fem
@@ -587,7 +593,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         """
         Solve the non-local chain stretch problem
         """
-        print("Non-local chain stretch problem")
+        self.print0("Non-local chain stretch problem")
         (iter, converged) = fem.solver_bounded_lmbda_c_tilde.solve()
 
         return fem
@@ -596,7 +602,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         """
         Solve the non-local chain stretch problem
         """
-        print("Non-local chain stretch problem")
+        self.print0("Non-local chain stretch problem")
         (iter, converged) = fem.solver_unbounded_lmbda_c_tilde.solve()
 
         return fem
@@ -605,7 +611,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         """
         Solve the weak form
         """
-        print("Displacement and non-local chain stretch monolithic problem")
+        self.print0("Displacement and non-local chain stretch monolithic problem")
         (iter, converged) = fem.solver_bounded_monolithic.solve()
 
         return fem
@@ -614,7 +620,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         """
         Solve the weak form
         """
-        print("Displacement and non-local chain stretch monolithic problem")
+        self.print0("Displacement and non-local chain stretch monolithic problem")
         (iter, converged) = fem.solver_unbounded_monolithic.solve()
 
         return fem
@@ -637,7 +643,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                 lmbda_c_tilde_diff = fem.lmbda_c_tilde.vector() - fem.lmbda_c_tilde_prior.vector()
                 error_lmbda_c_tilde = lmbda_c_tilde_diff.norm('linf')
                 # monitor the results
-                print("Alternate minimization scheme: Iteration # {0:3d}; error = {1:>14.8f}".format(itrtn, error_lmbda_c_tilde))
+                self.print0("Alternate minimization scheme: Iteration # {0:3d}; error = {1:>14.8f}".format(itrtn, error_lmbda_c_tilde))
                 # update prior non-local chain stretch
                 fem.lmbda_c_tilde_prior.assign(fem.lmbda_c_tilde)
                 # update iteration
@@ -751,9 +757,11 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         
         if ppp.save_lmbda_c_chunks:
             lmbda_c_val = project(fem.lmbda_c, fem.V_DG_scalar)
-            for meshpoint_indx in range(len(gp.meshpoints)):
-                chunks.lmbda_c_chunks_val[meshpoint_indx] = lmbda_c_val(gp.meshpoints[meshpoint_indx])
-            chunks.lmbda_c_chunks.append(deepcopy(chunks.lmbda_c_chunks_val))
+            if MPI.rank(MPI.comm_world) == 0:
+                for meshpoint_indx in range(len(gp.meshpoints)):
+                    chunks.lmbda_c_chunks_val[meshpoint_indx] = lmbda_c_val(gp.meshpoints[meshpoint_indx])
+                chunks.lmbda_c_chunks.append(deepcopy(chunks.lmbda_c_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_c_eq
         if ppp.save_lmbda_c_eq_mesh:
@@ -767,14 +775,19 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
 
                 lmbda_c_eq___nu_val.rename(name_str, parameter_str)
                 file_results.write(lmbda_c_eq___nu_val, deformation.t_val)
+
+                MPI.barrier(MPI.comm_world)
         
         if ppp.save_lmbda_c_eq_chunks:
             for meshpoint_indx in range(len(gp.meshpoints)):
                 for nu_chunk_indx in range(len(self.nu_chunks_indx_list)):
                     nu_indx             = self.nu_chunks_indx_list[nu_chunk_indx]
                     lmbda_c_eq___nu_val = project(self.lmbda_c_eq_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
-                    chunks.lmbda_c_eq_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_c_eq___nu_val(gp.meshpoints[meshpoint_indx])
-            chunks.lmbda_c_eq_chunks.append(deepcopy(chunks.lmbda_c_eq_chunks_val))
+                    if MPI.rank(MPI.comm_world) == 0:
+                        chunks.lmbda_c_eq_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_c_eq___nu_val(gp.meshpoints[meshpoint_indx])
+            if MPI.rank(MPI.comm_world) == 0:
+                chunks.lmbda_c_eq_chunks.append(deepcopy(chunks.lmbda_c_eq_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_nu
         if ppp.save_lmbda_nu_mesh:
@@ -796,6 +809,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     lmbda_nu___nu_val = project(self.lmbda_nu_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.lmbda_nu_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_nu___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_nu_chunks.append(deepcopy(chunks.lmbda_nu_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_c_tilde
         if ppp.save_lmbda_c_tilde:
@@ -806,6 +820,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.lmbda_c_tilde_chunks_val[meshpoint_indx] = fem.lmbda_c_tilde(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_c_tilde_chunks.append(deepcopy(chunks.lmbda_c_tilde_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_c_eq_tilde
         if ppp.save_lmbda_c_eq_tilde_mesh:
@@ -827,6 +842,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     lmbda_c_eq_tilde___nu_val = project(self.lmbda_c_eq_tilde_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.lmbda_c_eq_tilde_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_c_eq_tilde___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_c_eq_tilde_chunks.append(deepcopy(chunks.lmbda_c_eq_tilde_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_nu_tilde
         if ppp.save_lmbda_nu_tilde_mesh:
@@ -848,6 +864,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     lmbda_nu_tilde___nu_val = project(self.lmbda_nu_tilde_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.lmbda_nu_tilde_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_nu_tilde___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_nu_tilde_chunks.append(deepcopy(chunks.lmbda_nu_tilde_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_c_tilde_max
         if ppp.save_lmbda_c_tilde_max:
@@ -858,6 +875,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.lmbda_c_tilde_max_chunks_val[meshpoint_indx] = fem.lmbda_c_tilde_max(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_c_tilde_max_chunks.append(deepcopy(chunks.lmbda_c_tilde_max_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_c_eq_tilde_max
         if ppp.save_lmbda_c_eq_tilde_max_mesh:
@@ -879,6 +897,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     lmbda_c_eq_tilde_max___nu_val = project(self.lmbda_c_eq_tilde_max_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.lmbda_c_eq_tilde_max_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_c_eq_tilde_max___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_c_eq_tilde_max_chunks.append(deepcopy(chunks.lmbda_c_eq_tilde_max_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # lmbda_nu_tilde_max
         if ppp.save_lmbda_nu_tilde_max_mesh:
@@ -900,6 +919,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     lmbda_nu_tilde_max___nu_val = project(self.lmbda_nu_tilde_max_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.lmbda_nu_tilde_max_chunks_val[meshpoint_indx][nu_chunk_indx] = lmbda_nu_tilde_max___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.lmbda_nu_tilde_max_chunks.append(deepcopy(chunks.lmbda_nu_tilde_max_chunks_val))
+            MPI.barrier(MPI.comm_world)
 
         # upsilon_c
         if ppp.save_upsilon_c_mesh:
@@ -921,6 +941,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     upsilon_c___nu_val = project(self.upsilon_c_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.upsilon_c_chunks_val[meshpoint_indx][nu_chunk_indx] = upsilon_c___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.upsilon_c_chunks.append(deepcopy(chunks.upsilon_c_chunks_val))
+            MPI.barrier(MPI.comm_world)
 
         # Upsilon_c
         if ppp.save_Upsilon_c_mesh:
@@ -933,6 +954,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.Upsilon_c_chunks_val[meshpoint_indx] = Upsilon_c_val(gp.meshpoints[meshpoint_indx])
             chunks.Upsilon_c_chunks.append(deepcopy(chunks.Upsilon_c_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # d_c
         if ppp.save_d_c_mesh:
@@ -954,6 +976,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     d_c___nu_val = project(self.d_c_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.d_c_chunks_val[meshpoint_indx][nu_chunk_indx] = d_c___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.d_c_chunks.append(deepcopy(chunks.d_c_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # D_c
         if ppp.save_D_c_mesh:
@@ -966,6 +989,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.D_c_chunks_val[meshpoint_indx] = D_c_val(gp.meshpoints[meshpoint_indx])
             chunks.D_c_chunks.append(deepcopy(chunks.D_c_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # epsilon_cnu_diss_hat
         if ppp.save_epsilon_cnu_diss_hat_mesh:
@@ -987,6 +1011,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     epsilon_cnu_diss_hat___nu_val = project(self.epsilon_cnu_diss_hat_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.epsilon_cnu_diss_hat_chunks_val[meshpoint_indx][nu_chunk_indx] = epsilon_cnu_diss_hat___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.epsilon_cnu_diss_hat_chunks.append(deepcopy(chunks.epsilon_cnu_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # Epsilon_cnu_diss_hat
         if ppp.save_Epsilon_cnu_diss_hat_mesh:
@@ -999,6 +1024,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.Epsilon_cnu_diss_hat_chunks_val[meshpoint_indx] = Epsilon_cnu_diss_hat_val(gp.meshpoints[meshpoint_indx])
             chunks.Epsilon_cnu_diss_hat_chunks.append(deepcopy(chunks.Epsilon_cnu_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # epsilon_c_diss_hat
         if ppp.save_epsilon_c_diss_hat_mesh:
@@ -1020,6 +1046,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     epsilon_c_diss_hat___nu_val = project(self.epsilon_c_diss_hat_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.epsilon_c_diss_hat_chunks_val[meshpoint_indx][nu_chunk_indx] = epsilon_c_diss_hat___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.epsilon_c_diss_hat_chunks.append(deepcopy(chunks.epsilon_c_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # Epsilon_c_diss_hat
         if ppp.save_Epsilon_c_diss_hat_mesh:
@@ -1032,6 +1059,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.Epsilon_c_diss_hat_chunks_val[meshpoint_indx] = Epsilon_c_diss_hat_val(gp.meshpoints[meshpoint_indx])
             chunks.Epsilon_c_diss_hat_chunks.append(deepcopy(chunks.Epsilon_c_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # overline_epsilon_cnu_diss_hat
         if ppp.save_overline_epsilon_cnu_diss_hat_mesh:
@@ -1053,6 +1081,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     overline_epsilon_cnu_diss_hat___nu_val = project(self.overline_epsilon_cnu_diss_hat_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.overline_epsilon_cnu_diss_hat_chunks_val[meshpoint_indx][nu_chunk_indx] = overline_epsilon_cnu_diss_hat___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.overline_epsilon_cnu_diss_hat_chunks.append(deepcopy(chunks.overline_epsilon_cnu_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # overline_Epsilon_cnu_diss_hat
         if ppp.save_overline_Epsilon_cnu_diss_hat_mesh:
@@ -1065,6 +1094,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.overline_Epsilon_cnu_diss_hat_chunks_val[meshpoint_indx] = overline_Epsilon_cnu_diss_hat_val(gp.meshpoints[meshpoint_indx])
             chunks.overline_Epsilon_cnu_diss_hat_chunks.append(deepcopy(chunks.overline_Epsilon_cnu_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # overline_epsilon_c_diss_hat
         if ppp.save_overline_epsilon_c_diss_hat_mesh:
@@ -1086,6 +1116,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
                     overline_epsilon_c_diss_hat___nu_val = project(self.overline_epsilon_c_diss_hat_ufl_fenics_mesh_func(nu_indx, fem), fem.V_DG_scalar)
                     chunks.overline_epsilon_c_diss_hat_chunks_val[meshpoint_indx][nu_chunk_indx] = overline_epsilon_c_diss_hat___nu_val(gp.meshpoints[meshpoint_indx])
             chunks.overline_epsilon_c_diss_hat_chunks.append(deepcopy(chunks.overline_epsilon_c_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # overline_Epsilon_c_diss_hat
         if ppp.save_overline_Epsilon_c_diss_hat_mesh:
@@ -1098,6 +1129,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             for meshpoint_indx in range(len(gp.meshpoints)):
                 chunks.overline_Epsilon_c_diss_hat_chunks_val[meshpoint_indx] = overline_Epsilon_c_diss_hat_val(gp.meshpoints[meshpoint_indx])
             chunks.overline_Epsilon_c_diss_hat_chunks.append(deepcopy(chunks.overline_Epsilon_c_diss_hat_chunks_val))
+            MPI.barrier(MPI.comm_world)
         
         # sigma
         if ppp.save_sigma_mesh:
@@ -1118,6 +1150,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             sigma_penalty_term_val = project(self.first_pk_stress_penalty_term_ufl_fenics_mesh_func(fem)/fem.J*fem.F.T, fem.V_DG_tensor)
             sigma_less_penalty_term_val = project((self.first_pk_stress_ufl_fenics_mesh_func(fem)-self.first_pk_stress_penalty_term_ufl_fenics_mesh_func(fem))/fem.J*fem.F.T, fem.V_DG_tensor)
             chunks = self.weak_form_store_calculated_sigma_chunks(sigma_val, sigma_penalty_term_val, sigma_less_penalty_term_val, femp.two_dim_tensor2vector_indx_dict, gp.meshpoints, chunks)
+            MPI.barrier(MPI.comm_world)
         
         # F
         if ppp.save_F_mesh:
@@ -1128,6 +1161,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         if ppp.save_F_chunks:
             F_val  = project(fem.F, fem.V_DG_tensor)
             chunks = self.weak_form_store_calculated_deformation_chunks(F_val, femp.two_dim_tensor2vector_indx_dict, gp.meshpoints, chunks)
+            MPI.barrier(MPI.comm_world)
         
         return chunks
     
@@ -1152,7 +1186,7 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
         return 3 * lmbda_comp_nu + lmbda_comp_nu**2*sin(7*lmbda_comp_nu/2)/5 + lmbda_comp_nu**3/dnmntr
     
     def first_pk_stress_ufl_fenics_mesh_func(self, fem):
-        second_pk_stress_val = Constant(0.0)*fem.I
+        first_pk_stress_val = Constant(0.0)*fem.I
         for nu_indx in range(self.nu_num):
             # determine equilibrium chain stretch and segement stretch
             nu_val              = self.nu_list[nu_indx]
@@ -1167,9 +1201,9 @@ class TwoDimensionalPlaneStrainNearlyIncompressibleNonaffineEightChainModelEqual
             # determine chain damage
             upsilon_c___nu_val = self.upsilon_c_ufl_fenics_mesh_func(nu_indx, fem)
             # determine stress response
-            second_pk_stress_val += upsilon_c___nu_val*P_nu___nu_val*nu_val*A_nu___nu_val*xi_c___nu_val/(3.*fem.lmbda_c)*fem.F
-        second_pk_stress_val += self.Upsilon_c_ufl_fenics_mesh_func(fem)**2*self.K_G*(fem.J-1)*fem.J*fem.F_inv.T
-        return second_pk_stress_val
+            first_pk_stress_val += upsilon_c___nu_val*P_nu___nu_val*nu_val*A_nu___nu_val*xi_c___nu_val/(3.*fem.lmbda_c)*fem.F
+        first_pk_stress_val += self.Upsilon_c_ufl_fenics_mesh_func(fem)**2*self.K_G*(fem.J-1)*fem.J*fem.F_inv.T
+        return first_pk_stress_val
     
     def first_pk_stress_penalty_term_ufl_fenics_mesh_func(self, fem):
         return self.Upsilon_c_ufl_fenics_mesh_func(fem)**2*self.K_G*(fem.J-1)*fem.J*fem.F_inv.T

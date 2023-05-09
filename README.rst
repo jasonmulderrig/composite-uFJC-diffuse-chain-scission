@@ -4,6 +4,8 @@ composite uFJC diffuse chain scission
 
 |build| |license|
 
+This repository is now depreciated as an archive. Please instead refer to the `nonlocal-composite-uFJC-scission-network-fracture <https://github.com/jasonmulderrig/nonlocal-composite-uFJC-scission-network-fracture>`_ repository.
+
 The Python package for the composite uFJC model in the context of diffuse chain scission.
 
 ************

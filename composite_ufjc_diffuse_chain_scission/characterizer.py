@@ -12,6 +12,10 @@ class CompositeuFJCDiffuseChainScissionCharacterizer(object):
 
     def __init__(self):
 
+        # Set the mpi communicator of the object
+        self.comm_rank = MPI.rank(MPI.comm_world)
+        self.comm_size = MPI.size(MPI.comm_world)
+
         # Parameters
         self.parameters = default_parameters()
         self.set_user_parameters()

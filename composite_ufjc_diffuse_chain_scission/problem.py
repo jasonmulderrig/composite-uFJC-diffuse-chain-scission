@@ -12,20 +12,13 @@ import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
 class CompositeuFJCDiffuseChainScissionProblem(object):
-
     """
     Problem class for composite uFJC diffuse chain scission models
     """
-
-    ############################################################################################################################
-    # Constructor
-    ############################################################################################################################
-
     def __init__(self):
 
         # Set the mpi communicator of the object
         self.comm_rank = MPI.rank(MPI.comm_world)
-        self.comm_size = MPI.size(MPI.comm_world)
 
         # Parameters
         self.parameters = default_parameters()
@@ -267,30 +260,31 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
         """
         Solve the evolution problem for homogeneous strong form through the applied deformation history at each time step
         """
-        # initialization
-        strong_form_results, strong_form_chunks = self.material.homogeneous_strong_form_initialization()
+        if self.comm_rank == 0:
+            # initialization
+            strong_form_results, strong_form_chunks = self.material.homogeneous_strong_form_initialization()
 
-        # grab deformation
-        deformation = self.deformation
+            # grab deformation
+            deformation = self.deformation
 
-        # time stepping
-        for t_indx, t_val in enumerate(deformation.t):
+            # time stepping
+            for t_indx, t_val in enumerate(deformation.t):
+                
+                # Update time stepping
+                deformation.t_indx = t_indx
+                deformation.t_val  = t_val
+                print("\033[1;32m--- Time step # {0:2d}: t = {1:.3f} for the homogeneous strong form network deformation ---\033[1;m".format(t_indx, t_val))
+
+                # Solve homogeneous strong form
+                strong_form_results = self.material.homogeneous_strong_form_solve_step(deformation, strong_form_results)
+
+                # Post-processing
+                if deformation.t_indx in deformation.chunk_indx:
+                    strong_form_chunks = self.material.homogeneous_strong_form_chunk_post_processing(deformation, strong_form_results, strong_form_chunks)
             
-            # Update time stepping
-            deformation.t_indx = t_indx
-            deformation.t_val  = t_val
-            print("\033[1;32m--- Time step # {0:2d}: t = {1:.3f} for the homogeneous strong form network deformation ---\033[1;m".format(t_indx, t_val))
-
-            # Solve homogeneous strong form
-            strong_form_results = self.material.homogeneous_strong_form_solve_step(deformation, strong_form_results)
-
-            # Post-processing
-            if deformation.t_indx in deformation.chunk_indx:
-                strong_form_chunks = self.material.homogeneous_strong_form_chunk_post_processing(deformation, strong_form_results, strong_form_chunks)
-        
-        # Store chunks and perform any finalizations, such as data visualization
-        self.strong_form_chunks = strong_form_chunks
-        self.set_homogeneous_strong_form_deformation_finalization()
+            # Store chunks and perform any finalizations, such as data visualization
+            self.strong_form_chunks = strong_form_chunks
+            self.set_homogeneous_strong_form_deformation_finalization()
     
     def set_loading(self):
         """
@@ -343,10 +337,15 @@ class CompositeuFJCDiffuseChainScissionProblem(object):
 
             # Solve weak form for displacements, and account for network irreversibility
             self.fem = self.material.fenics_weak_form_solve_step(self.fem)
+            
+            # Enforce all parallelization to unify after the weak form
+            # solve step and before post-processing
+            MPI.barrier(MPI.comm_world)
 
             # Post-processing
             if deformation.t_indx in deformation.chunk_indx: # the elements in chunk_indx are guaranteed to be unique
                 weak_form_chunks = self.material.fenics_weak_form_chunk_post_processing(deformation, weak_form_chunks, self.fem, self.file_results, self.parameters)
+                MPI.barrier(MPI.comm_world)
 
             self.set_user_fenics_weak_form_post_processing()
         

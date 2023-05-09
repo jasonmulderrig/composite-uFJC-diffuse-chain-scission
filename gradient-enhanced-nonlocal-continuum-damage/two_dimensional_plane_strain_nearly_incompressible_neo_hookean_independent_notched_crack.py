@@ -123,7 +123,7 @@ def save_current_figure_no_labels(savedir, name):
     # plt.savefig(savedir+name+".eps", format='eps', dpi=1000, transparent=True)
     plt.close()
 
-# Edit the define_deformation function here -- look at the composite ufjc network code for assistance in this
+# Edit the define_deformation function here -- look at the composite ufjc scission network code for assistance in this
 def define_deformation(self):
     """
     Define the applied deformation history
